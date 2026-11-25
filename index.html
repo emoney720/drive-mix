@@ -27,6 +27,27 @@ h2{font-size:22px;margin-bottom:10px}
 .sign{background:var(--acc);color:#fff;border-radius:10px;padding:6px 14px 8px;border:3px solid #fff;box-shadow:0 0 0 3px var(--acc)}
 .ver{font-size:13px;color:var(--dim);margin-top:10px;white-space:nowrap}
 .ver b{color:var(--ink);font-weight:600}
+.topr{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.gear{display:inline-flex;align-items:center;gap:6px;font:600 15px Barlow,sans-serif;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 14px;min-height:44px;cursor:pointer}
+dialog#setup{width:min(640px,calc(100% - 32px));max-height:88vh;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--ink)}
+dialog#setup[open]{display:flex;flex-direction:column}
+dialog#setup:focus,.dlg-body:focus{outline:none}
+dialog#setup::backdrop{background:rgba(0,0,0,.6)}
+.dlg-head{padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+.dlg-head h2{margin:0}
+.dlg-body{overflow-y:auto;padding:16px;flex:1;-webkit-overflow-scrolling:touch}
+.dlg-foot{padding:10px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.dlg-foot .go,.dlg-foot .sec{margin-top:0;min-height:48px}
+.dlg-foot .msg{margin:0 0 8px}.dlg-foot .msg:empty{display:none}
+@media(max-width:600px){dialog#setup{width:100%;max-width:100%;height:100%;max-height:100%;margin:0;border:0;border-radius:0}.dlg-head{padding-top:max(16px,env(safe-area-inset-top))}}
+.ac{position:relative;margin-top:10px}
+.sugg{list-style:none;margin:4px 0 0;padding:4px;position:absolute;left:0;right:0;top:100%;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.sugg li{padding:9px 10px;border-radius:8px;cursor:pointer}
+.sugg li[aria-selected=true],.sugg li:hover{background:var(--line)}
+.sugg .m{font-weight:600}.sugg .s{font-size:13px;color:var(--dim)}
+.sugg li.attr{font-size:12px;color:var(--dim);text-align:right;cursor:default;background:none;padding:4px 8px}
+.picked{font-size:13px;color:var(--ok);margin-top:6px}
+#reset{margin-top:16px}
 .pill{font-size:13px;color:var(--dim);text-align:right}
 .pill b{color:var(--ok);font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -81,7 +102,13 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <h1 class="sign">Drive Mix</h1>
       <div class="ver" id="ver"></div>
     </div>
-    <div class="pill" id="status">Spotify not connected</div>
+    <div class="topr">
+      <button class="gear" id="openSetup" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Setup
+      </button>
+      <div class="pill" id="status">Spotify not connected</div>
+    </div>
   </div>
 
   <section class="card" id="trip">
@@ -89,7 +116,11 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
     <select id="from"></select>
     <label class="l">To</label>
     <div class="chips" id="to"></div>
-    <input type="text" id="custom" class="hide" placeholder="Address or place, e.g. Church St, Burlington VT" style="margin-top:10px">
+    <div class="ac hide" id="customWrap">
+      <input type="text" id="custom" autocomplete="off" spellcheck="false" placeholder="Search an address or place" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+      <ul class="sugg hide" id="sugg" role="listbox"></ul>
+      <div class="picked" id="picked"></div>
+    </div>
     <div class="row">
       <div><label class="l" for="leave">Leaving at</label><input type="time" id="leave"></div>
       <div><label class="l" for="extra">Extra music</label>
@@ -112,20 +143,21 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
     <a class="btn maps" id="openMaps" href="#">Start navigation in Google Maps</a>
     <div class="msg" id="saveMsg" role="status"></div>
     <ol class="tracks" id="tracks"></ol>
+    <button class="sec" id="reset" type="button">Reset — start a new mix</button>
   </section>
 
-  <section class="card">
-    <details id="setup">
-      <summary>Setup</summary>
+  <dialog id="setup" aria-labelledby="setupTitle">
+    <div class="dlg-head"><h2 id="setupTitle">Setup</h2></div>
+    <div class="dlg-body">
       <label class="l" for="cid">Spotify Client ID</label>
       <input type="text" id="cid" autocomplete="off" spellcheck="false" placeholder="From developer.spotify.com → your app">
       <label class="l">Redirect URI to paste into your Spotify app settings</label>
       <div class="copy"><code id="redir"></code><button id="copyRedir" type="button">Copy</button></div>
       <button class="sec" id="connect">Connect Spotify</button>
 
-      <label class="l" for="gkey">Google Maps API key (Routes API) — optional</label>
+      <label class="l" for="gkey">Google Maps API key (Routes API + Places API (New)) — optional</label>
       <input type="password" id="gkey" autocomplete="off" spellcheck="false" placeholder="Without it, a free backup router is used">
-      <p class="small">With a key you get traffic-aware drive times and can type any address. Without one, presets still work.</p>
+      <p class="small">With a key you get traffic-aware drive times and address search for "Other…". Without one, presets still work.</p>
 
       <h2 style="margin-top:18px">Mood playlists</h2>
       <p class="small">Assign your own playlists to a mood. Only playlists you own or collaborate on can be read.</p>
@@ -137,15 +169,21 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <h2 style="margin-top:18px">Places</h2>
       <p class="small">Add a street address to make any preset exact (used with a Google key and for navigation).</p>
       <div id="places"></div>
+    </div>
+    <div class="dlg-foot">
       <div class="msg" id="setupMsg" role="status"></div>
-    </details>
-  </section>
+      <div class="row">
+        <button class="sec" id="closeSetup" type="button">Close</button>
+        <button class="go" id="saveSetup" type="button">Save</button>
+      </div>
+    </div>
+  </dialog>
 </main>
 
 <script>
 {
-const APP_VERSION = 3;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 24, 2026 · 8:40 PM ET';  // when this version was made
+const APP_VERSION = 4;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 10:10 AM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -215,7 +253,7 @@ async function handleCallback() {
   if (p.get('error')) return setMsg('#setupMsg', 'Spotify sign-in was cancelled.', true);
   await tokenCall({ grant_type: 'authorization_code', code: p.get('code'), redirect_uri: redirect(), code_verifier: LS.get('verifier', '') });
   await loadPlaylists();
-  $('#setup').open = true;
+  openSetup();
   setMsg('#setupMsg', 'Connected. Assign playlists to moods, then tap "Load / refresh my songs".');
 }
 async function access() {
@@ -269,6 +307,7 @@ async function likedTracks(max = 500) {
 }
 async function refreshLib() {
   const btn = $('#refresh'); btn.disabled = true;
+  let ok = false;
   try {
     const next = {};
     for (const b of BUCKETS) next[b.id] = [];
@@ -282,8 +321,10 @@ async function refreshLib() {
     lib = { at: Date.now(), ...next };
     LS.set('lib', lib);
     setMsg('#setupMsg', 'Songs loaded. You are ready to build a mix.');
+    ok = true;
   } catch (e) { setMsg('#setupMsg', e.message, true); }
   btn.disabled = false; renderCounts(); renderStatus();
+  return ok;
 }
 
 /* ---------- Trip data ---------- */
@@ -386,9 +427,12 @@ async function build() {
     let to;
     if (state.to === 'custom') {
       const q = $('#custom').value.trim();
-      if (!q) throw new Error('Type a destination.');
-      to = { id: 'custom', name: q, addr: q, lat: null };
-    } else to = P.find(p => p.id === state.to);
+      if (!q) throw new Error('Search for a destination first.');
+      to = state.picked && state.picked.label === q ? state.picked : { id: 'custom', name: q, addr: q, lat: null };
+    } else {
+      to = P.find(p => p.id === state.to);
+      if (!to) throw new Error('Pick a destination.');
+    }
     const [hh, mm] = ($('#leave').value || '').split(':').map(Number);
     let when = new Date(); if (!isNaN(hh)) { when.setHours(hh, mm, 0, 0); if (when < Date.now() - 30 * 60000) when.setDate(when.getDate() + 1); }
     const [rt, wx] = await Promise.all([route(from, to, when.getTime()), weather(from, when)]);
@@ -441,7 +485,7 @@ function renderTrip() {
   $('#to').innerHTML = P.filter(p => !p.home || p.id === 'lincoln' || p.id === 'brandon').map(p =>
     `<button class="chip" type="button" data-id="${p.id}" aria-pressed="${state.to === p.id}">${esc(p.name)}</button>`).join('') +
     `<button class="chip" type="button" data-id="custom" aria-pressed="${state.to === 'custom'}">Other…</button>`;
-  $('#custom').classList.toggle('hide', state.to !== 'custom');
+  $('#customWrap').classList.toggle('hide', state.to !== 'custom');
 }
 function renderResult() {
   const { ctx, plan: P, mix } = state;
@@ -508,17 +552,120 @@ $('#reshuffle').addEventListener('click', reshuffle);
 $('#save').addEventListener('click', save);
 $('#connect').addEventListener('click', login);
 $('#refresh').addEventListener('click', refreshLib);
-$('#cid').addEventListener('change', e => { cfg.clientId = e.target.value.trim(); LS.set('cfg', cfg); });
-$('#gkey').addEventListener('change', e => { cfg.gkey = e.target.value.trim(); LS.set('cfg', cfg); });
-$('#useLiked').addEventListener('change', e => { cfg.useLiked = e.target.checked; LS.set('cfg', cfg); });
-$('#maps').addEventListener('change', e => { const id = e.target.dataset.pl; if (!id) return; mapping[id] = e.target.value; LS.set('mapping', mapping); setMsg('#setupMsg', 'Tap "Load / refresh my songs" to apply.'); });
-$('#places').addEventListener('change', e => { const id = e.target.dataset.place; if (!id) return; addrs[id] = e.target.value; LS.set('addrs', addrs); renderTrip(); });
+/* Setup modal: edits only apply on Save */
+const dlg = $('#setup');
+function openSetup() {
+  renderSetup(); setMsg('#setupMsg', '');
+  if (dlg.open) return;
+  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function closeSetup() { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+function commitSetup() {
+  cfg.clientId = $('#cid').value.trim(); cfg.gkey = $('#gkey').value.trim(); cfg.useLiked = $('#useLiked').checked;
+  LS.set('cfg', cfg);
+  const before = JSON.stringify(mapping);
+  document.querySelectorAll('#maps select[data-pl]').forEach(sel => { mapping[sel.dataset.pl] = sel.value; });
+  LS.set('mapping', mapping);
+  document.querySelectorAll('#places input[data-place]').forEach(i => { addrs[i.dataset.place] = i.value.trim(); });
+  LS.set('addrs', addrs);
+  renderTrip();
+  return before !== JSON.stringify(mapping);
+}
+$('#openSetup').addEventListener('click', openSetup);
+$('#closeSetup').addEventListener('click', closeSetup);
+$('#saveSetup').addEventListener('click', async () => {
+  const btn = $('#saveSetup'); btn.disabled = true;
+  const moodsChanged = commitSetup();
+  let ok = true;
+  if (moodsChanged && tok) { setMsg('#setupMsg', 'Moods changed — reloading your songs…'); ok = await refreshLib(); }
+  btn.disabled = false;
+  if (ok) closeSetup();
+});
+$('#connect').addEventListener('click', () => { commitSetup(); login(); });
+$('#refresh').addEventListener('click', () => { commitSetup(); refreshLib(); });
+
+/* Reset back to a clean trip screen */
+function setNow() { const n = new Date(); $('#leave').value = String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); }
+$('#reset').addEventListener('click', () => {
+  Object.assign(state, { to: null, ctx: null, plan: null, mix: null, savedId: null, savedName: null, picked: null });
+  LS.set('to', null);
+  $('#custom').value = ''; $('#picked').textContent = ''; hideSugg();
+  $('#result').classList.add('hide'); $('#tracks').innerHTML = ''; strip.innerHTML = '';
+  setMsg('#tripMsg', ''); setMsg('#saveMsg', '');
+  $('#extra').value = '1.1'; setNow(); renderTrip();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* "Other…" — Google address search (Places API New) */
+let acTimer = null, acSeq = 0, acToken = null, acItems = [], acIdx = -1;
+const sugg = $('#sugg'), custom = $('#custom');
+const newToken = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+function hideSugg() { sugg.classList.add('hide'); sugg.innerHTML = ''; custom.setAttribute('aria-expanded', 'false'); acIdx = -1; }
+function suggNote(text) { sugg.innerHTML = `<li class="attr" style="text-align:left">${esc(text)}</li>`; sugg.classList.remove('hide'); }
+function renderSugg() {
+  if (!acItems.length) return suggNote('No matches yet — keep typing.');
+  sugg.innerHTML = acItems.map((it, i) => `<li role="option" id="sugg-${i}" data-i="${i}" aria-selected="${i === acIdx}">
+    <div class="m">${esc(it.main)}</div><div class="s">${esc(it.sec)}</div></li>`).join('') + '<li class="attr">Powered by Google</li>';
+  sugg.classList.remove('hide'); custom.setAttribute('aria-expanded', 'true');
+}
+async function acSearch(q) {
+  const seq = ++acSeq;
+  if (q.length < 3) return hideSugg();
+  if (!cfg.gkey) return suggNote('Add a Google API key in Setup for address search. A full typed address still works.');
+  acToken = acToken || newToken();
+  try {
+    const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': cfg.gkey },
+      body: JSON.stringify({ input: q, sessionToken: acToken, includedRegionCodes: ['us'],
+        locationBias: { circle: { center: { latitude: 44.2, longitude: -72.95 }, radius: 50000 } } })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (seq !== acSeq) return;
+    if (!r.ok) throw new Error(j.error?.message || 'error ' + r.status);
+    acItems = (j.suggestions || []).map(x => x.placePrediction).filter(Boolean).map(p => ({
+      id: p.placeId, full: p.text?.text || '', main: p.structuredFormat?.mainText?.text || p.text?.text || '', sec: p.structuredFormat?.secondaryText?.text || ''
+    }));
+    acIdx = -1; renderSugg();
+  } catch (e) { if (seq === acSeq) suggNote('Address search unavailable: ' + e.message); }
+}
+async function pick(i) {
+  const it = acItems[i]; if (!it) return;
+  hideSugg(); custom.value = it.full;
+  try {
+    const r = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(it.id)}?sessionToken=${encodeURIComponent(acToken || '')}`, {
+      headers: { 'X-Goog-Api-Key': cfg.gkey, 'X-Goog-FieldMask': 'location,formattedAddress' }
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error?.message || 'error');
+    const addr = j.formattedAddress || it.full;
+    state.picked = { id: 'custom', name: it.main, addr, label: addr, lat: j.location?.latitude ?? null, lon: j.location?.longitude ?? null };
+  } catch (e) {
+    state.picked = { id: 'custom', name: it.main, addr: it.full, label: it.full, lat: null };
+  }
+  acToken = null; custom.value = state.picked.label;
+  $('#picked').textContent = '✓ ' + state.picked.addr;
+}
+custom.addEventListener('input', () => {
+  state.picked = null; $('#picked').textContent = '';
+  clearTimeout(acTimer); const q = custom.value.trim();
+  acTimer = setTimeout(() => acSearch(q), 250);
+});
+custom.addEventListener('keydown', e => {
+  if (sugg.classList.contains('hide') || !acItems.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); acIdx = (acIdx + (e.key === 'ArrowDown' ? 1 : -1) + acItems.length) % acItems.length; renderSugg();
+    custom.setAttribute('aria-activedescendant', 'sugg-' + acIdx);
+  } else if (e.key === 'Enter' && acIdx >= 0) { e.preventDefault(); pick(acIdx); }
+  else if (e.key === 'Escape') hideSugg();
+});
+sugg.addEventListener('pointerdown', e => { const li = e.target.closest('li[data-i]'); if (!li) return; e.preventDefault(); pick(+li.dataset.i); });
+custom.addEventListener('blur', () => setTimeout(hideSugg, 150));
 $('#copyRedir').addEventListener('click', async () => { try { await navigator.clipboard.writeText(redirect()); $('#copyRedir').textContent = 'Copied'; } catch (e) { $('#copyRedir').textContent = 'Select it'; } });
 
 /* ---------- Start ---------- */
-const now = new Date(); $('#leave').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+setNow();
 renderTrip(); renderSetup(); renderStatus();
-if (!tok || !lib) $('#setup').open = true;
+if (!tok || !lib) openSetup();
 handleCallback().then(renderStatus).catch(e => setMsg('#setupMsg', e.message, true));
 }
 </script>

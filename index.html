@@ -192,7 +192,12 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
     <div id="sportFields" class="hide">
       <label class="l">Activity</label>
       <div class="chips" id="sportType"></div>
+      <div id="routeWrap" class="hide">
+        <label class="l" for="sportRoute">Or use a saved Strava route</label>
+        <select id="sportRoute"></select>
+      </div>
       <label class="l">Length</label>
+      <p class="small hide" id="sportHint" style="margin:0 0 8px"></p>
       <div class="chips" id="sportLen"></div>
       <input type="number" id="sportMin" inputmode="numeric" min="5" max="300" placeholder="Or type minutes, e.g. 75" style="margin-top:10px">
       <label class="l">Mood</label>
@@ -231,6 +236,16 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <input type="password" id="gkey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Without it, a free backup router is used">
       <p class="small">With a key you get traffic-aware drive times and address search. Without one, presets still work.</p>
 
+      <h2 style="margin-top:18px">Strava — optional</h2>
+      <p class="small">Create an app at strava.com/settings/api and set its <b>Authorization Callback Domain</b> to <b id="stravaDomain"></b>. Then paste its Client ID and Client Secret here.</p>
+      <label class="l" for="sid">Strava Client ID</label>
+      <input type="text" id="sid" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="e.g. 123456">
+      <label class="l" for="ssecret">Strava Client Secret</label>
+      <input type="password" id="ssecret" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Stays on this phone">
+      <button class="sec" id="connectStrava" type="button">Connect Strava</button>
+      <button class="linkbtn hide" id="disconnectStrava" type="button">Disconnect Strava</button>
+      <label class="chk"><input type="checkbox" id="stravaTag"> Add the playlist to my Strava activity after a Sport mix</label>
+
       <h2 style="margin-top:18px">Mood playlists</h2>
       <p class="small">Assign your own playlists to a mood. Only playlists you own or collaborate on can be read.</p>
       <p class="small">Swipe a playlist left to remove it from this list. It stays in Spotify. Playlists Drive Mix made are left out automatically.</p>
@@ -245,7 +260,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <div id="places"></div>
 
       <h2 style="margin-top:18px">Back up &amp; restore</h2>
-      <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Refresh playlists &amp; songs.</p>
+      <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key and Strava secret, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Refresh playlists &amp; songs.</p>
       <button class="sec" id="backup" type="button">Back up settings</button>
       <div id="backupBox" class="hide">
         <textarea id="backupText" readonly aria-label="Your settings backup"></textarea>
@@ -268,8 +283,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 18;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 2:05 PM ET';  // when this version was made
+const APP_VERSION = 19;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 2:30 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -347,11 +362,111 @@ async function handleCallback() {
   const p = new URLSearchParams(location.search);
   if (!p.has('code') && !p.has('error')) return;
   history.replaceState(null, '', redirect());
+  if (p.get('state') === 'strava') return stravaCallback(p);
   if (p.get('error')) return setMsg('#setupMsg', 'Spotify sign-in was cancelled.', true);
   await tokenCall({ grant_type: 'authorization_code', code: p.get('code'), redirect_uri: redirect(), code_verifier: LS.get('verifier', '') });
   await loadPlaylists();
   openSetup();
   setMsg('#setupMsg', 'Connected. Assign playlists to moods, then tap "Refresh playlists & songs".');
+}
+/* ---------- Strava (single-athlete personal app) ---------- */
+let stok = LS.get('stok', null);
+const SAPI = 'https://www.strava.com/api/v3';
+function stravaLogin() {
+  commitSetup();
+  if (!cfg.stravaId || !cfg.stravaSecret) return setMsg('#setupMsg', 'Paste your Strava Client ID and Client Secret first.', true);
+  location.href = 'https://www.strava.com/oauth/authorize?' + new URLSearchParams({
+    client_id: cfg.stravaId, response_type: 'code', redirect_uri: redirect(), approval_prompt: 'auto',
+    scope: 'read,activity:read_all,activity:write', state: 'strava'
+  });
+}
+async function stravaTokenCall(body) {
+  let last = null;
+  for (const url of [SAPI + '/oauth/token', 'https://www.strava.com/oauth/token']) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: cfg.stravaId, client_secret: cfg.stravaSecret, ...body }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.message || 'error ' + r.status);
+      stok = { access: j.access_token, refresh: j.refresh_token, exp: j.expires_at * 1000 - 60000,
+        athlete: j.athlete ? { id: j.athlete.id, name: [j.athlete.firstname, j.athlete.lastname].filter(Boolean).join(' ') } : stok?.athlete,
+        scope: body.scope || stok?.scope || '' };
+      LS.set('stok', stok);
+      return;
+    } catch (e) { last = e; }
+  }
+  throw new Error('Strava sign-in failed: ' + (last?.message || 'unknown error'));
+}
+async function stravaCallback(p) {
+  openSetup();
+  if (p.get('error')) return setMsg('#setupMsg', 'Strava sign-in was cancelled.', true);
+  try {
+    await stravaTokenCall({ grant_type: 'authorization_code', code: p.get('code'), scope: p.get('scope') || '' });
+    renderSetup();
+    const canWrite = /activity:write/.test(stok.scope);
+    setMsg('#setupMsg', `Strava connected${stok.athlete?.name ? ' as ' + stok.athlete.name : ''}.` +
+      (canWrite ? '' : ' Note: you didn’t allow editing activities, so playlists can’t be added to them.'));
+    stravaSync(true);
+  } catch (e) { setMsg('#setupMsg', e.message, true); }
+}
+async function stv(path, opt = {}) {
+  if (!stok) throw new Error('Strava not connected');
+  if (Date.now() >= stok.exp) await stravaTokenCall({ grant_type: 'refresh_token', refresh_token: stok.refresh });
+  const r = await fetch(SAPI + path, { ...opt, headers: { Authorization: 'Bearer ' + stok.access, ...(opt.body ? { 'Content-Type': 'application/json' } : {}) } });
+  if (!r.ok) { let m = ''; try { m = (await r.json()).message || ''; } catch (e) {} throw new Error('Strava ' + r.status + (m ? ': ' + m : '')); }
+  return r.json().catch(() => null);
+}
+const STYPE = t => /Run/.test(t) ? 'run' : /Ride/.test(t) ? 'ride' : /Ski|Snowboard/.test(t) ? 'ski'
+  : /Hike|Walk|Snowshoe/.test(t) ? 'hike' : /Weight|Workout|Crossfit|HIIT|Elliptical|StairStepper|Rowing|Yoga|Pilates/.test(t) ? 'gym' : 'other';
+let shist = LS.get('shist', {}), sroutes = LS.get('sroutes', []);
+async function stravaSync(force) {
+  if (!stok) return;
+  const last = LS.get('ssyncAt', 0);
+  try {
+    if (force || Date.now() - last > 6 * 3600e3) {
+      // typical length per activity type, from your last 60 activities
+      const acts = await stv('/athlete/activities?per_page=60') || [];
+      const by = {};
+      for (const a of acts) { const k = STYPE(a.sport_type || a.type); (by[k] = by[k] || []).push(a.moving_time / 60); }
+      shist = {};
+      for (const k in by) { const v = by[k].sort((a, b) => a - b), med = v[Math.floor(v.length / 2)]; shist[k] = { min: Math.max(5, Math.round(med / 5) * 5), n: v.length }; }
+      LS.set('shist', shist);
+      // saved routes
+      if (stok.athlete?.id) {
+        const rs = await stv(`/athletes/${stok.athlete.id}/routes?per_page=50`) || [];
+        sroutes = rs.map(r => ({ id: r.id_str || String(r.id), name: r.name, kind: r.type === 2 ? 'run' : 'ride', min: Math.max(5, Math.round((r.estimated_moving_time || 0) / 60)) }))
+          .filter(r => r.min > 0);
+        LS.set('sroutes', sroutes);
+      }
+      LS.set('ssyncAt', Date.now());
+      renderSport();
+    }
+    await stravaTagPending();
+  } catch (e) { console.log('Strava sync:', e.message); }
+}
+/* After a Sport mix: add the playlist to the matching Strava activity's description */
+async function stravaTagPending() {
+  if (!stok || cfg.stravaTag === false || !/activity:write/.test(stok.scope || '')) return;
+  let pend = LS.get('pendingTags', []).filter(t => Date.now() - t.at < 36 * 3600e3);
+  if (!pend.length) return LS.set('pendingTags', []);
+  const after = Math.floor(Math.min(...pend.map(t => t.at)) / 1000) - 3 * 3600;
+  const acts = await stv(`/athlete/activities?after=${after}&per_page=30`) || [];
+  const used = new Set(LS.get('taggedActs', []));
+  for (const t of [...pend]) {
+    const a = acts.filter(x => !used.has(x.id)).map(x => ({ x, start: Date.parse(x.start_date) }))
+      .filter(({ start }) => start >= t.at - 3 * 3600e3 && start <= t.at + 12 * 3600e3)
+      .sort((p, q) => Math.abs(p.start - t.at) - Math.abs(q.start - t.at))[0];
+    if (!a) continue;
+    const full = await stv(`/activities/${a.x.id}`);
+    const url = 'https://open.spotify.com/playlist/' + t.id;
+    const desc = (full?.description || '').trim();
+    if (!desc.includes(url)) {
+      await stv(`/activities/${a.x.id}`, { method: 'PUT', body: JSON.stringify({ description: (desc ? desc + '\n\n' : '') + `🎵 ${t.name}\n${url}` }) });
+    }
+    used.add(a.x.id); pend = pend.filter(p => p !== t);
+    setMsg('#tripMsg', `Added "${t.name}" to your Strava activity "${a.x.name}".`);
+  }
+  LS.set('pendingTags', pend); LS.set('taggedActs', [...used].slice(-50));
 }
 async function access() {
   if (!tok) throw new Error('Connect Spotify in Setup first.');
@@ -588,7 +703,8 @@ function buildSport() {
     if (!sport.mood) throw new Error('Pick a mood.');
     const s = SPORTS.find(x => x.id === sport.type);
     const ctx = { kind: 'sport', min, sport: s.id, sportName: s.name, noun: s.noun, mood: sport.mood, extra: 1.05,
-      when: new Date(), hour: new Date().getHours(), from: { name: '' }, to: { name: s.name } };
+      when: new Date(), hour: new Date().getHours(), from: { name: '' }, to: { name: s.name },
+      route: (sroutes.find(r => r.id === sport.route) || {}).name || '' };
     state.ctx = ctx; state.plan = planSport(ctx); state.mix = buildMix(ctx, state.plan);
     state.savedId = null; state.savedName = null; state.dirty = true;
     renderResult(); setMsg('#tripMsg', '');
@@ -628,6 +744,10 @@ async function save() {
     }
     await sp(`/playlists/${id}/items`, { method: 'PUT', body: JSON.stringify({ uris }) });
     state.savedId = id; state.savedName = name; state.dirty = false;
+    if (state.ctx.kind === 'sport') {
+      const pend = LS.get('pendingTags', []).filter(t => t.id !== id);
+      pend.push({ id, name, at: Date.now() }); LS.set('pendingTags', pend);
+    }
     setMsg('#saveMsg', `Saved as "${name}".`);
     return id;
   }
@@ -656,7 +776,7 @@ function describe(ctx, mix) {
   if (ctx.kind === 'sport') {
     const m = MOODS.find(x => x.id === ctx.mood);
     const n = String(Math.round(ctx.min)), art = /^8/.test(n) || /^(11|18)$/.test(n) ? 'An' : 'A';
-    return `${art} ${Math.round(ctx.min)}-minute ${ctx.noun} with a ${m.name.toLowerCase()} feel, so ${m.arc}. ${comp}: about ${Math.round(mix.total / 60000)} minutes of music.`;
+    return `${art} ${Math.round(ctx.min)}-minute ${ctx.noun}${ctx.route ? ' on ' + ctx.route : ''} with a ${m.name.toLowerCase()} feel, so ${m.arc}. ${comp}: about ${Math.round(mix.total / 60000)} minutes of music.`;
   }
   const h = ctx.hour, wt = (ctx.wx?.text || '').toLowerCase();
   const tod = h >= 5 && h < 8 ? 'early-morning' : h < 11 && h >= 8 ? 'morning' : h >= 11 && h < 14 ? 'midday' : h >= 14 && h < 17 ? 'afternoon' : h >= 17 && h < 20 ? 'evening' : 'late-night';
@@ -729,6 +849,10 @@ const ro = new ResizeObserver(drawStrip); ro.observe(strip);
 
 function renderSetup() {
   $('#cid').value = cfg.clientId; $('#gkey').value = cfg.gkey; $('#useLiked').checked = !!cfg.useLiked;
+  $('#sid').value = cfg.stravaId || ''; $('#ssecret').value = cfg.stravaSecret || ''; $('#stravaTag').checked = cfg.stravaTag !== false;
+  $('#stravaDomain').textContent = location.host || 'emoney720.github.io';
+  $('#connectStrava').textContent = stok ? 'Reconnect Strava' + (stok.athlete?.name ? ' (' + stok.athlete.name + ')' : '') : 'Connect Strava';
+  $('#disconnectStrava').classList.toggle('hide', !stok);
   $('#redir').textContent = redirect();
   $('#connect').textContent = tok ? 'Reconnect Spotify (' + LS.get('me', 'connected') + ')' : 'Connect Spotify';
   draftMap = { ...mapping }; draftHidden = new Set(hiddenPl);
@@ -816,6 +940,7 @@ function openSetup() {
 function closeSetup() { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
 function commitSetup() {
   cfg.clientId = $('#cid').value.trim(); cfg.gkey = $('#gkey').value.trim(); cfg.useLiked = $('#useLiked').checked;
+  cfg.stravaId = $('#sid').value.trim(); cfg.stravaSecret = $('#ssecret').value.trim(); cfg.stravaTag = $('#stravaTag').checked;
   LS.set('cfg', cfg);
   const before = JSON.stringify(mapping);
   hiddenPl = [...draftHidden]; LS.set('hiddenPl', hiddenPl);
@@ -831,6 +956,11 @@ function commitSetup() {
   return before !== JSON.stringify(mapping);
 }
 $('#openSetup').addEventListener('click', openSetup);
+$('#connectStrava').addEventListener('click', stravaLogin);
+$('#disconnectStrava').addEventListener('click', () => {
+  stok = null; LS.set('stok', null); shist = {}; sroutes = []; LS.set('shist', {}); LS.set('sroutes', []);
+  renderSetup(); renderSport(); setMsg('#setupMsg', 'Strava disconnected on this phone.');
+});
 $('#closeSetup').addEventListener('click', closeSetup);
 $('#saveSetup').addEventListener('click', async () => {
   const btn = $('#saveSetup'); btn.disabled = true;
@@ -1080,15 +1210,33 @@ function renderSport() {
   $('#sportLen').innerHTML = LENGTHS.map(n => chip('len', n, n + ' min', sport.len === n && !$('#sportMin').value)).join('');
   $('#sportMood').innerHTML = MOODS.map(x => chip('mood', x.id, x.name, sport.mood === x.id)).join('');
   $('#moodNote').textContent = sport.mood ? MOODS.find(x => x.id === sport.mood).note : '';
+  const h = sport.type && shist[sport.type];
+  $('#sportHint').textContent = h ? `Your usual ${SPORTS.find(x => x.id === sport.type).noun}: about ${h.min} min (from your last ${h.n} on Strava)` : '';
+  $('#sportHint').classList.toggle('hide', !h);
+  $('#routeWrap').classList.toggle('hide', !sroutes.length);
+  $('#sportRoute').innerHTML = '<option value="">—</option>' + sroutes.map(r =>
+    `<option value="${esc(r.id)}"${sport.route === r.id ? ' selected' : ''}>${esc(r.name)} · ${r.kind === 'run' ? 'Run' : 'Ride'} · ~${r.min} min</option>`).join('');
 }
+$('#sportRoute').addEventListener('change', e => {
+  const r = sroutes.find(x => x.id === e.target.value);
+  sport.route = r ? r.id : null;
+  if (r) { sport.type = r.kind; sport.len = r.min; $('#sportMin').value = r.min; }
+  renderSport();
+});
 $('#sportFields').addEventListener('click', e => {
   const b = e.target.closest('.chip[data-g]'); if (!b) return;
   const g = b.dataset.g;
   if (g === 'len') { sport.len = +b.dataset.id; $('#sportMin').value = ''; }
   else sport[g] = b.dataset.id;
+  if (g === 'type') {
+    sport.route = null;
+    const h = shist[sport.type];
+    if (h && !$('#sportMin').value && !sport.lenPicked) { sport.len = h.min; $('#sportMin').value = h.min; }   // prefill your usual length
+  }
+  if (g === 'len') sport.lenPicked = true;
   renderSport();
 });
-$('#sportMin').addEventListener('input', () => { sport.len = +$('#sportMin').value || null; renderSport(); });
+$('#sportMin').addEventListener('input', () => { sport.len = +$('#sportMin').value || null; sport.lenPicked = true; sport.route = null; renderSport(); });
 function setActivity(a) {
   activity = a; $('#activity').value = a;
   $('#driveFields').classList.toggle('hide', a !== 'drive');
@@ -1097,12 +1245,14 @@ function setActivity(a) {
   Object.assign(state, { ctx: null, plan: null, mix: null, savedId: null, savedName: null });
 }
 $('#activity').addEventListener('change', e => setActivity(e.target.value));
-$('#reset').addEventListener('click', () => { sport = { type: null, len: null, mood: null }; $('#sportMin').value = ''; renderSport(); });
+$('#reset').addEventListener('click', () => { sport = { type: null, len: null, mood: null, route: null, lenPicked: false }; $('#sportMin').value = ''; renderSport(); });
 
 /* ---------- Start ---------- */
 renderSport(); setActivity('drive');
 if (new URLSearchParams(location.search).has('v')) history.replaceState(null, '', redirect());
 checkUpdate();
+stravaSync(false);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') stravaSync(false); });
 setNow();
 clearDestination();   // always start with a blank destination
 renderTrip(); renderSetup(); renderStatus();

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Drive Mix">
+<meta name="apple-mobile-web-app-title" content="Trax">
 <meta name="theme-color" content="#16181b">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
-<title>Drive Mix</title>
+<title>TRAX</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=Racing+Sans+One&display=swap">
 <style>
@@ -17,7 +17,7 @@
    PICTURE: the mix strip, segments colored by mood, with the arrival marker
    COLOUR and TYPE: asphalt charcoal, snow-white ink, barn-red accent; Barlow (highway-sign lettering)
    LAYOUT: one column, trip form first, result below, setup tucked into a panel */
-:root{--bg:#16181b;--panel:#202328;--line:#33373e;--ink:#f3f1ec;--dim:#a7abb2;--acc:#d2452f;--ok:#7fc99a;
+:root{--bg:#16181b;--panel:#202328;--line:#33373e;--ink:#f3f1ec;--dim:#a7abb2;--acc:#3d6337;--forest:#2f4a2b;--bark:#7a4f2a;--cream:#f2e8cf;--ok:#7fc99a;
 --chill:#7fb2e5;--cruise:#e3cf98;--upbeat:#ff7a45;--singalong:#ffd23f;--liked:#c4a1ff;color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
@@ -27,8 +27,10 @@ h1{font-size:clamp(30px,9vw,40px);letter-spacing:.01em;white-space:nowrap}
 h2{font-size:22px;margin-bottom:10px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 18px}
 .sign{background:var(--acc);color:#fff;border-radius:10px;padding:6px 14px 8px;border:3px solid #fff;box-shadow:0 0 0 3px var(--acc)}
-.logo{width:84px;height:84px;margin:0;background:var(--acc);border:4px solid #fff;border-radius:19px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.lt{display:flex;flex-direction:column;align-items:center;color:#fff;font:400 24px/.86 "Racing Sans One","Barlow Semi Condensed",sans-serif;transform:translateX(2px) rotate(-16deg);white-space:nowrap}
+.logo{width:84px;height:84px;margin:0;position:relative;flex:none}
+.logo .ic{position:absolute;left:0;top:0;width:180px;height:180px;box-sizing:border-box;transform:scale(.46667);transform-origin:0 0;background:var(--forest);border:8px solid var(--bark);border-radius:40px;overflow:hidden}
+.logo .ic svg{position:absolute;inset:0;width:100%;height:100%}
+.logo .ic .t{position:absolute;left:0;right:0;top:20px;text-align:center;color:var(--cream);font:400 56px/1 "Racing Sans One","Barlow Semi Condensed",sans-serif;transform:rotate(-16deg)}
 .top{position:relative}
 .act{position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:flex-start}
 .actl{font-size:13px;color:var(--dim);margin-bottom:4px}
@@ -63,7 +65,7 @@ dialog#setup::backdrop{background:rgba(0,0,0,.6)}
 .addfav{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .addfav input[type=text]{background:var(--panel)}
 .addfav .row .sec{margin-top:12px}
-button.sec.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.sec.pri{background:var(--acc);border-color:var(--acc);color:var(--cream)}
 .fav{border-top:1px solid var(--line);padding:12px 0}
 .favtop{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 44px;gap:6px}
 .favtop button{min-height:44px;font-size:15px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;cursor:pointer}
@@ -92,7 +94,7 @@ input[type=time]{-webkit-appearance:none;appearance:none;display:block;max-width
 input[type=time]::-webkit-date-and-time-value{text-align:left}
 select{-webkit-appearance:none;appearance:none;max-width:100%;padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a7abb2' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 button.go,.btn,button.sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font:600 18px/1 "Barlow Semi Condensed",Barlow,sans-serif;min-height:52px;border-radius:12px;border:0;cursor:pointer;text-decoration:none;margin-top:16px}
-button.go{background:var(--acc);color:#fff}
+button.go{background:var(--acc);color:var(--cream)}
 .btn{background:#1db954;color:#06210f}
 .btn.maps{background:var(--ink);color:var(--bg)}
 button.sec{background:transparent;color:var(--ink);border:1px solid var(--line);font-size:16px;min-height:44px}
@@ -138,7 +140,14 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 <main>
   <div class="top">
     <div>
-      <h1 class="logo" aria-label="Drive Mix"><span class="lt" aria-hidden="true"><span>Drive</span><span>Mix</span></span></h1>
+      <h1 class="logo" aria-label="TRAX"><span class="ic" aria-hidden="true"><svg viewBox="0 0 164 164">
+  <g fill="none" stroke="#f2e8cf" stroke-linecap="round" opacity=".9"><path d="M-6 138.0 C 30 139.3, 44 106.7, 78 108.0 C 112 109.3, 120 78.7, 172 62.0" stroke-width="1.9"/><path d="M-6 144.0 C 30 144.7, 44 111.3, 78 112.0 C 112 112.7, 120 81.3, 172 64.0" stroke-width="1.9"/><path d="M-6 150.0 C 30 150.0, 44 116.0, 78 116.0 C 112 116.0, 120 84.0, 172 66.0" stroke-width="1.9"/><path d="M-6 156.0 C 30 155.3, 44 120.7, 78 120.0 C 112 119.3, 120 86.7, 172 68.0" stroke-width="1.9"/><path d="M-6 162.0 C 30 160.7, 44 125.3, 78 124.0 C 112 122.7, 120 89.3, 172 70.0" stroke-width="1.9"/></g>
+  <g fill="#f2e8cf">
+    <g transform="translate(26 147) rotate(-20)"><ellipse rx="6" ry="4.2"/><rect x="4.5" y="-20" width="2" height="20"/></g>
+    <g transform="translate(82 118) rotate(-20)"><ellipse rx="4.6" ry="3.2"/><rect x="3.4" y="-15" width="1.7" height="15"/></g>
+    <g transform="translate(134 84) rotate(-20)"><ellipse rx="3.4" ry="2.4"/><rect x="2.5" y="-11" width="1.4" height="11"/><path d="M3.9 -11 q5 3 4 8" stroke="#f2e8cf" stroke-width="1.4" fill="none"/></g>
+  </g>
+</svg><span class="t">TRAX</span></span></h1>
       <div class="ver" id="ver"></div>
     </div>
     <div class="act">
@@ -248,7 +257,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
       <h2 style="margin-top:18px">Mood playlists</h2>
       <p class="small">Assign your own playlists to a mood. Only playlists you own or collaborate on can be read.</p>
-      <p class="small">Swipe a playlist left to remove it from this list. It stays in Spotify. Playlists Drive Mix made are left out automatically.</p>
+      <p class="small">Swipe a playlist left to remove it from this list. It stays in Spotify. Playlists this app made are left out automatically.</p>
       <div id="maps"><p class="small">Connect Spotify to see your playlists.</p></div>
       <button class="linkbtn hide" id="unhide" type="button"></button>
       <label class="chk"><input type="checkbox" id="useLiked"> Mix in Liked Songs as a wildcard</label>
@@ -283,8 +292,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 20;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 2:35 PM ET';  // when this version was made
+const APP_VERSION = 21;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 3:10 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -327,7 +336,7 @@ let mapping = LS.get('mapping', {});
 let lib = LS.get('lib', null);
 let ownedLists = LS.get('owned', []);
 let hiddenPl = LS.get('hiddenPl', []);
-const isDriveMix = name => /^(drive|sport) mix(\s*-|$)/i.test((name || '').trim());   // playlists this app created
+const isDriveMix = name => /^((drive|sport) mix|trax)(\s*-|$)/i.test((name || '').trim());   // playlists this app created
 let state = { from: LS.get('from', 'here'), to: null, picked: null, ctx: null, plan: null, mix: null };
 
 /* ---------- Spotify auth (PKCE, no secret needed) ---------- */
@@ -731,9 +740,9 @@ async function save() {
     const uris = state.mix.tracks.map(t => t.uri);
     let id = state.savedId, name = state.savedName;
     if (!id) {
-      // "Drive Mix - <Destination>_<MM-DD-YYYY>", then " 2", " 3"… if that name is taken
+      // "TRAX - <Destination or activity>_<MM-DD-YYYY>", then " 2", " 3"… if that name is taken
       const d = state.ctx.when, dest = state.ctx.to.name.replace(/\s+/g, ' ').trim().slice(0, 40);
-      const base = `${state.ctx.kind === 'sport' ? 'Sport' : 'Drive'} Mix - ${dest}_${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
+      const base = `TRAX - ${dest}_${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
       const taken = new Set();
       let url = '/me/playlists?limit=50';
       while (url) { const j = await sp(url); for (const p of j.items || []) if (p) taken.add(p.name.toLowerCase()); url = j.next; }
@@ -742,8 +751,8 @@ async function save() {
       const t = state.ctx;
       const pl = await sp('/me/playlists', { method: 'POST', body: JSON.stringify({ name, public: false,
         description: t.kind === 'sport'
-          ? `${t.sportName} · ${Math.round(t.min)} min · ${MOODS.find(m => m.id === t.mood).name} · made by Drive Mix`
-          : `${t.from.name} → ${t.to.name} · ${Math.round(t.min)} min${t.wx ? ' · ' + t.wx.text : ''} · made by Drive Mix` }) });
+          ? `${t.sportName} · ${Math.round(t.min)} min · ${MOODS.find(m => m.id === t.mood).name} · made by TRAX`
+          : `${t.from.name} → ${t.to.name} · ${Math.round(t.min)} min${t.wx ? ' · ' + t.wx.text : ''} · made by TRAX` }) });
       id = pl.id;
     }
     await sp(`/playlists/${id}/items`, { method: 'PUT', body: JSON.stringify({ uris }) });
@@ -1056,7 +1065,7 @@ $('#restore').addEventListener('click', () => {
     $('#restoreText').value = '';
     renderSetup(); renderTrip();
     setMsg('#backupMsg', `Restored ${favs.length} favorites and your settings. Now tap Connect Spotify, then Refresh playlists & songs.`);
-  } catch (e) { setMsg('#backupMsg', "That doesn't look like a Drive Mix backup. Paste the whole block, starting with DRIVEMIX.", true); }
+  } catch (e) { setMsg('#backupMsg', "That doesn't look like a TRAX backup. Paste the whole block, starting with DRIVEMIX.", true); }
 });
 
 /* ---------- Google address search (Places API New), reusable ---------- */
@@ -1193,7 +1202,7 @@ async function checkUpdate() {
     newer = m ? +m[1] : 0;
     if (newer > APP_VERSION) {
       const b = $('#update');
-      b.innerHTML = `<span>Drive Mix v${newer} is available</span><b>Tap to update</b>`;
+      b.innerHTML = `<span>TRAX v${newer} is available</span><b>Tap to update</b>`;
       b.classList.remove('hide');
     }
   } catch (e) { /* offline: try again next time */ }

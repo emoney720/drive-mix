@@ -100,6 +100,7 @@ button:disabled{opacity:.5;cursor:default}
 .fact{background:var(--bg);border-radius:10px;padding:10px}
 .fact b{display:block;font:700 22px/1.1 "Barlow Semi Condensed",sans-serif;white-space:nowrap}
 .fact span{font-size:13px;color:var(--dim)}
+.desc{margin:2px 0 12px;font-size:16px;line-height:1.5}
 .why{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
 .why span{font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
 .fig{position:relative;height:96px;margin:6px 0 4px}
@@ -183,6 +184,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
   <section class="card hide" id="result">
     <div class="facts" id="facts"></div>
+    <p class="desc" id="desc"></p>
     <div class="why" id="why"></div>
     <div class="legend" id="legend"></div>
     <div class="fig" id="fig"><svg id="strip" role="img" aria-label="Mix timeline colored by mood"></svg></div>
@@ -245,8 +247,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 16;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 1:05 PM ET';  // when this version was made
+const APP_VERSION = 17;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 1:40 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -567,6 +569,32 @@ function renderTrip() {
     `<button class="chip" type="button" data-id="${esc(p.id)}" aria-pressed="${state.to === p.id}">${esc(p.name)}</button>`).join('') +
     `<button class="chip add" type="button" data-id="__add">＋ Add favorite</button>`;
 }
+/* 1–2 sentence summary of the mix: the theme and why */
+function describe(ctx, mix) {
+  const h = ctx.hour, wt = (ctx.wx?.text || '').toLowerCase();
+  const tod = h >= 5 && h < 8 ? 'early-morning' : h < 11 && h >= 8 ? 'morning' : h >= 11 && h < 14 ? 'midday' : h >= 14 && h < 17 ? 'afternoon' : h >= 17 && h < 20 ? 'evening' : 'late-night';
+  const day = ctx.when.toLocaleDateString('en-US', { weekday: 'long' });
+  const wx = /snow|sleet|flurr|ice|freezing/.test(wt) ? 'snowy' : /rain|shower|drizzle|storm/.test(wt) ? 'rainy' : /fog/.test(wt) ? 'foggy'
+    : /sunny|clear/.test(wt) ? (ctx.wx?.day ? 'sunny' : 'clear') : /cloud|overcast/.test(wt) ? 'gray' : '';
+  const spd = ctx.km / (ctx.min / 60);
+  const road = spd > 75 ? ' on mostly highway' : spd < 50 ? ' on back roads' : '';
+  const trip = ctx.toSki ? `run up to ${ctx.to.name}` : ctx.fromSki ? `ride home from ${ctx.from.name}` : `drive to ${ctx.to.name}`;
+  const arc = ctx.toSki ? 'it opens steady with cruise tracks and builds to upbeat hype for the last stretch before the lifts'
+    : ctx.fromSki ? 'it eases off with sing-alongs and chill tracks to wind down after the mountain'
+    : tod === 'late-night' ? 'it keeps things mellow and low-key for the dark roads'
+    : wx === 'snowy' || wx === 'rainy' || wx === 'foggy' ? 'it leans calm and steady so you can focus on the road'
+    : wx === 'sunny' ? 'it leans bright and upbeat, with room to sing along'
+    : 'it starts steady, lifts in the middle and eases off as you arrive';
+  const words = [wx, day, tod].filter(Boolean).join(' ');
+  const art = /^[aeiou]/i.test(words) ? 'An' : 'A';
+  const first = `${art} ${words} ${trip}${road}, so ${arc}.`;
+  const label = { chill: 'chill', cruise: 'cruise', upbeat: 'upbeat', singalong: 'sing-along', liked: 'Liked Songs wildcard' };
+  const counts = BUCKETS.map(b => [b.id, mix.tracks.filter(t => t.b === b.id).length]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]);
+  const mix2 = counts.length === 1 ? `All ${label[counts[0][0]]} (${counts[0][1]} song${counts[0][1] === 1 ? "" : "s"})`
+    : `Mostly ${label[counts[0][0]]} (${counts[0][1]}) and ${label[counts[1][0]]} (${counts[1][1]})`;
+  const second = `${mix2}: about ${Math.round(mix.total / 60000)} minutes of music for a ${Math.round(ctx.min)}-minute drive.`;
+  return first + ' ' + second;
+}
 function renderResult() {
   const { ctx, plan: P, mix } = state;
   $('#result').classList.remove('hide');
@@ -576,6 +604,7 @@ function renderResult() {
     [Math.round(ctx.km * 0.621) + ' mi', esc(ctx.from.name) + ' → ' + esc(ctx.to.name)],
     [wx, ctx.wx ? esc(ctx.wx.text) : 'weather unavailable']
   ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join('');
+  $('#desc').textContent = mix.tracks.length ? describe(ctx, mix) : '';
   $('#why').innerHTML = P.why.map(w => `<span>${esc(w)}</span>`).join('');
   const used = BUCKETS.filter(b => mix.tracks.some(t => t.b === b.id));
   $('#legend').innerHTML = used.map(b => `<span><i style="background:${COL(b.id)}"></i>${esc(b.name)} · ${mix.tracks.filter(t => t.b === b.id).length}</span>`).join('');

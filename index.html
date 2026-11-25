@@ -220,8 +220,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 9;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 12:15 PM ET';  // when this version was made
+const APP_VERSION = 10;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 12:20 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -263,7 +263,7 @@ let tok = LS.get('tok', null);
 let mapping = LS.get('mapping', {});
 let lib = LS.get('lib', null);
 let ownedLists = LS.get('owned', []);
-let state = { from: LS.get('from', 'here'), to: LS.get('to', null), picked: null, ctx: null, plan: null, mix: null };
+let state = { from: LS.get('from', 'here'), to: null, picked: null, ctx: null, plan: null, mix: null };
 
 /* ---------- Spotify auth (PKCE, no secret needed) ---------- */
 const SCOPES = 'playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read';
@@ -832,7 +832,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 if (new URLSearchParams(location.search).has('v')) history.replaceState(null, '', redirect());
 checkUpdate();
 setNow();
-if (state.to && favById(state.to)) selectFav(state.to); else clearDestination();
+clearDestination();   // always start with a blank destination
 renderTrip(); renderSetup(); renderStatus();
 if (!tok || !lib) openSetup();
 handleCallback().then(renderStatus).catch(e => setMsg('#setupMsg', e.message, true));

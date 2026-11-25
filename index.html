@@ -25,6 +25,8 @@ h1{font-size:40px;letter-spacing:.01em}
 h2{font-size:22px;margin-bottom:10px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 18px}
 .sign{background:var(--acc);color:#fff;border-radius:10px;padding:6px 14px 8px;border:3px solid #fff;box-shadow:0 0 0 3px var(--acc)}
+.ver{font-size:13px;color:var(--dim);margin-top:10px;white-space:nowrap}
+.ver b{color:var(--ink);font-weight:600}
 .pill{font-size:13px;color:var(--dim);text-align:right}
 .pill b{color:var(--ok);font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -75,7 +77,10 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 <body>
 <main>
   <div class="top">
-    <h1 class="sign">Drive Mix</h1>
+    <div>
+      <h1 class="sign">Drive Mix</h1>
+      <div class="ver" id="ver"></div>
+    </div>
     <div class="pill" id="status">Spotify not connected</div>
   </div>
 
@@ -139,7 +144,10 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
+const APP_VERSION = 3;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 24, 2026 · 8:40 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
+$('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
   get(k, d) { try { const v = localStorage.getItem('dm_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('dm_' + k, JSON.stringify(v)); } catch (e) {} }
@@ -386,6 +394,7 @@ async function build() {
     const [rt, wx] = await Promise.all([route(from, to, when.getTime()), weather(from, when)]);
     const ctx = { ...rt, wx, hour: when.getHours(), when, from, to, toSki: !!to.ski, fromSki: !!from.ski, extra: +$('#extra').value };
     state.ctx = ctx; state.plan = plan(ctx); state.mix = buildMix(ctx, state.plan);
+    state.savedId = null; state.savedName = null;
     renderResult();
     setMsg('#tripMsg', rt.note || '');
   } catch (e) { setMsg('#tripMsg', e.message, true); }
@@ -396,16 +405,25 @@ async function save() {
   const btn = $('#save'); btn.disabled = true; setMsg('#saveMsg', 'Sending to Spotify…');
   try {
     const uris = state.mix.tracks.map(t => t.uri);
-    let id = LS.get('mixId', null);
-    try { if (!id) throw { status: 404 }; await sp(`/playlists/${id}/items`, { method: 'PUT', body: JSON.stringify({ uris }) }); }
-    catch (e) {
-      if (e.status !== 404 && e.status !== 403 && id) throw e;
-      const pl = await sp('/me/playlists', { method: 'POST', body: JSON.stringify({ name: 'Drive Mix', public: false, description: 'Rebuilt by Drive Mix before each drive' }) });
-      id = pl.id; LS.set('mixId', id);
-      await sp(`/playlists/${id}/items`, { method: 'PUT', body: JSON.stringify({ uris }) });
+    let id = state.savedId, name = state.savedName;
+    if (!id) {
+      // "Drive Mix - <Destination>_<MM-DD-YYYY>", then " 2", " 3"… if that name is taken
+      const d = state.ctx.when, dest = state.ctx.to.name.replace(/\s+/g, ' ').trim().slice(0, 40);
+      const base = `Drive Mix - ${dest}_${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
+      const taken = new Set();
+      let url = '/me/playlists?limit=50';
+      while (url) { const j = await sp(url); for (const p of j.items || []) if (p) taken.add(p.name.toLowerCase()); url = j.next; }
+      name = base; let n = 2;
+      while (taken.has(name.toLowerCase())) name = `${base} ${n++}`;
+      const t = state.ctx;
+      const pl = await sp('/me/playlists', { method: 'POST', body: JSON.stringify({ name, public: false,
+        description: `${t.from.name} → ${t.to.name} · ${Math.round(t.min)} min${t.wx ? ' · ' + t.wx.text : ''} · made by Drive Mix` }) });
+      id = pl.id;
     }
+    await sp(`/playlists/${id}/items`, { method: 'PUT', body: JSON.stringify({ uris }) });
+    state.savedId = id; state.savedName = name;
     const a = $('#openSp'); a.href = 'https://open.spotify.com/playlist/' + id; a.classList.remove('hide');
-    setMsg('#saveMsg', 'Your "Drive Mix" playlist is updated. Open it, hit play, then start navigation.');
+    setMsg('#saveMsg', `Saved as "${name}". Open it, hit play, then start navigation.`);
   } catch (e) { setMsg('#saveMsg', e.message, true); }
   btn.disabled = false;
 }

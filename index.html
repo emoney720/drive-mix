@@ -220,8 +220,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 8;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 12:10 PM ET';  // when this version was made
+const APP_VERSION = 9;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 12:15 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -820,7 +820,12 @@ async function checkUpdate() {
     }
   } catch (e) { /* offline: try again next time */ }
 }
-$('#update').addEventListener('click', () => { location.replace(location.pathname + '?v=' + newer); });
+$('#update').addEventListener('click', async () => {
+  const b = $('#update'); b.innerHTML = '<span>Updating…</span>';
+  // Re-download the page into the phone's cache so the home-screen app opens the new version next time too
+  try { await fetch(location.pathname, { cache: 'reload' }); } catch (e) {}
+  location.replace(location.pathname + '?v=' + newer);
+});
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 
 /* ---------- Start ---------- */

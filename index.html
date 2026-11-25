@@ -33,7 +33,7 @@ h2{font-size:22px;margin-bottom:10px}
 .gear{display:inline-flex;align-items:center;gap:6px;font:600 15px Barlow,sans-serif;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 14px;min-height:44px;cursor:pointer}
 dialog#setup{width:min(640px,calc(100% - 32px));max-height:88vh;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--ink)}
 dialog#setup[open]{display:flex;flex-direction:column}
-dialog#setup:focus,.dlg-body:focus{outline:none}
+dialog#setup:focus,.dlg-body:focus,#setupTitle:focus{outline:none}
 dialog#setup::backdrop{background:rgba(0,0,0,.6)}
 .dlg-head{padding:16px 16px 10px;border-bottom:1px solid var(--line)}
 .dlg-head h2{margin:0}
@@ -110,7 +110,12 @@ ol.tracks li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px
 .ta{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tt{font-size:13px;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
 details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;min-height:44px;display:flex;align-items:center}
-.map{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.map{position:relative;overflow:hidden;border-top:1px solid var(--line);touch-action:pan-y}
+.mapin{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:8px;align-items:center;padding:6px 0;background:var(--panel);transition:transform .2s ease}
+.map.drag .mapin{transition:none}
+.map.open .mapin{transform:translateX(-100px)}
+.mapdel{position:absolute;right:0;top:4px;bottom:4px;width:92px;border:0;border-radius:10px;background:#c0392b;color:#fff;font:600 15px Barlow,sans-serif;cursor:pointer}
+.linkbtn{background:none;border:0;color:var(--dim);font:inherit;font-size:14px;text-decoration:underline;padding:10px 0;min-height:44px;cursor:pointer}
 .map select{min-height:40px;padding:8px}
 .copy{display:flex;gap:8px}.copy code{flex:1;background:var(--bg);border-radius:8px;padding:10px;font-size:13px;overflow-wrap:anywhere}
 .copy button{font:inherit;font-size:14px;background:var(--line);color:var(--ink);border:0;border-radius:8px;padding:0 14px;min-height:44px;cursor:pointer}
@@ -189,21 +194,23 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
   </section>
 
   <dialog id="setup" aria-labelledby="setupTitle">
-    <div class="dlg-head"><h2 id="setupTitle">Setup</h2></div>
+    <div class="dlg-head"><h2 id="setupTitle" tabindex="-1" autofocus>Setup</h2></div>
     <div class="dlg-body">
       <label class="l" for="cid">Spotify Client ID</label>
-      <input type="text" id="cid" autocomplete="off" spellcheck="false" placeholder="From developer.spotify.com → your app">
+      <input type="text" id="cid" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="From developer.spotify.com → your app">
       <label class="l">Redirect URI to paste into your Spotify app settings</label>
       <div class="copy"><code id="redir"></code><button id="copyRedir" type="button">Copy</button></div>
       <button class="sec" id="connect">Connect Spotify</button>
 
       <label class="l" for="gkey">Google Maps API key (Routes API + Places API (New)) — optional</label>
-      <input type="password" id="gkey" autocomplete="off" spellcheck="false" placeholder="Without it, a free backup router is used">
+      <input type="password" id="gkey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Without it, a free backup router is used">
       <p class="small">With a key you get traffic-aware drive times and address search. Without one, presets still work.</p>
 
       <h2 style="margin-top:18px">Mood playlists</h2>
       <p class="small">Assign your own playlists to a mood. Only playlists you own or collaborate on can be read.</p>
+      <p class="small">Swipe a playlist left to remove it from this list. It stays in Spotify. Playlists Drive Mix made are left out automatically.</p>
       <div id="maps"><p class="small">Connect Spotify to see your playlists.</p></div>
+      <button class="linkbtn hide" id="unhide" type="button"></button>
       <label class="chk"><input type="checkbox" id="useLiked"> Mix in Liked Songs as a wildcard</label>
       <button class="sec" id="refresh">Load / refresh my songs</button>
       <div class="counts" id="counts"></div>
@@ -215,9 +222,12 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <h2 style="margin-top:18px">Back up &amp; restore</h2>
       <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Load / refresh my songs.</p>
       <button class="sec" id="backup" type="button">Back up settings</button>
-      <textarea id="backupText" class="hide" readonly aria-label="Your settings backup"></textarea>
+      <div id="backupBox" class="hide">
+        <textarea id="backupText" readonly aria-label="Your settings backup"></textarea>
+        <button class="sec pri" id="copyBackup" type="button">Copy</button>
+      </div>
       <label class="l" for="restoreText" style="margin-top:16px">Restore: paste a backup here</label>
-      <textarea id="restoreText" placeholder="DRIVEMIX1:…" autocomplete="off" spellcheck="false"></textarea>
+      <textarea id="restoreText" placeholder="DRIVEMIX2:…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
       <button class="sec" id="restore" type="button">Restore settings</button>
       <div class="msg" id="backupMsg" role="status"></div>
     </div>
@@ -233,8 +243,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 12;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 12:30 PM ET';  // when this version was made
+const APP_VERSION = 13;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 12:45 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -276,6 +286,8 @@ let tok = LS.get('tok', null);
 let mapping = LS.get('mapping', {});
 let lib = LS.get('lib', null);
 let ownedLists = LS.get('owned', []);
+let hiddenPl = LS.get('hiddenPl', []);
+const isDriveMix = name => /^drive mix(\s*-|$)/i.test((name || '').trim());   // playlists this app created
 let state = { from: LS.get('from', 'here'), to: null, picked: null, ctx: null, plan: null, mix: null };
 
 /* ---------- Spotify auth (PKCE, no secret needed) ---------- */
@@ -339,7 +351,7 @@ async function loadPlaylists() {
   LS.set('me', me.display_name || me.id);
   let url = '/me/playlists?limit=50', out = [];
   while (url) { const j = await sp(url); out.push(...(j.items || []).filter(Boolean)); url = j.next; }
-  ownedLists = out.filter(p => p.owner?.id === me.id || p.collaborative).map(p => ({ id: p.id, name: p.name }));
+  ownedLists = out.filter(p => (p.owner?.id === me.id || p.collaborative) && !isDriveMix(p.name)).map(p => ({ id: p.id, name: p.name }));
   LS.set('owned', ownedLists);
   renderSetup();
 }
@@ -371,7 +383,8 @@ async function refreshLib() {
   try {
     const next = {};
     for (const b of BUCKETS) next[b.id] = [];
-    const ids = Object.keys(mapping).filter(id => mapping[id]);
+    const usable = new Set(ownedLists.filter(p => !isDriveMix(p.name) && !hiddenPl.includes(p.id)).map(p => p.id));
+    const ids = Object.keys(mapping).filter(id => mapping[id] && usable.has(id));
     if (!ids.length && !cfg.useLiked) throw new Error('Assign at least one playlist to a mood.');
     for (const id of ids) {
       setMsg('#setupMsg', 'Loading ' + (ownedLists.find(p => p.id === id)?.name || 'playlist') + '…');
@@ -597,13 +610,25 @@ function renderSetup() {
   $('#cid').value = cfg.clientId; $('#gkey').value = cfg.gkey; $('#useLiked').checked = !!cfg.useLiked;
   $('#redir').textContent = redirect();
   $('#connect').textContent = tok ? 'Reconnect Spotify (' + LS.get('me', 'connected') + ')' : 'Connect Spotify';
-  const opts = id => `<option value="">—</option>` + BUCKETS.filter(b => b.id !== 'liked').map(b => `<option value="${b.id}"${mapping[id] === b.id ? ' selected' : ''}>${b.name}</option>`).join('');
-  $('#maps').innerHTML = ownedLists.length
-    ? ownedLists.map(p => `<div class="map"><span>${esc(p.name)}</span><select data-pl="${esc(p.id)}" aria-label="Mood for ${esc(p.name)}">${opts(p.id)}</select></div>`).join('')
-    : `<p class="small">${tok ? 'No playlists of your own found.' : 'Connect Spotify to see your playlists.'}</p>`;
+  draftMap = { ...mapping }; draftHidden = new Set(hiddenPl);
+  renderMaps();
   draftFavs = favs.map(f => ({ ...f }));
   renderFavList();
   renderCounts();
+}
+let draftMap = {}, draftHidden = new Set();
+function renderMaps() {
+  const lists = ownedLists.filter(p => !isDriveMix(p.name) && !draftHidden.has(p.id));
+  const opts = id => `<option value="">—</option>` + BUCKETS.filter(b => b.id !== 'liked').map(b => `<option value="${b.id}"${draftMap[id] === b.id ? ' selected' : ''}>${b.name}</option>`).join('');
+  $('#maps').innerHTML = lists.length
+    ? lists.map(p => `<div class="map" data-pl="${esc(p.id)}">
+        <button class="mapdel" type="button" data-del="${esc(p.id)}" tabindex="-1">Remove</button>
+        <div class="mapin"><span>${esc(p.name)}</span><select data-pl="${esc(p.id)}" aria-label="Mood for ${esc(p.name)}">${opts(p.id)}</select></div>
+      </div>`).join('')
+    : `<p class="small">${tok ? 'No playlists to show.' : 'Connect Spotify to see your playlists.'}</p>`;
+  const n = ownedLists.filter(p => !isDriveMix(p.name) && draftHidden.has(p.id)).length;
+  $('#unhide').textContent = `Show ${n} removed playlist${n === 1 ? '' : 's'} again`;
+  $('#unhide').classList.toggle('hide', !n);
 }
 function renderCounts() {
   $('#counts').innerHTML = lib ? BUCKETS.map(b => `<span><i class="dot" style="background:${COL(b.id)}"></i>${b.name}: ${lib[b.id]?.length || 0}</span>`).join('') : '';
@@ -661,16 +686,19 @@ $('#copyRedir').addEventListener('click', async () => { try { await navigator.cl
 /* Setup modal: edits only apply on Save */
 const dlg = $('#setup');
 function openSetup() {
-  renderSetup(); setMsg('#setupMsg', ''); setMsg('#backupMsg', ''); $('#backupText').classList.add('hide');
+  renderSetup(); setMsg('#setupMsg', ''); setMsg('#backupMsg', ''); $('#backupBox').classList.add('hide');
   if (dlg.open) return;
   if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  $('#setupTitle').focus({ preventScroll: true });   // focus the title, not a text box, so no keyboard
+  $('.dlg-body').scrollTop = 0;
 }
 function closeSetup() { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
 function commitSetup() {
   cfg.clientId = $('#cid').value.trim(); cfg.gkey = $('#gkey').value.trim(); cfg.useLiked = $('#useLiked').checked;
   LS.set('cfg', cfg);
   const before = JSON.stringify(mapping);
-  document.querySelectorAll('#maps select[data-pl]').forEach(sel => { mapping[sel.dataset.pl] = sel.value; });
+  hiddenPl = [...draftHidden]; LS.set('hiddenPl', hiddenPl);
+  mapping = { ...draftMap }; for (const id of hiddenPl) delete mapping[id];
   LS.set('mapping', mapping);
   syncDraft();
   favs = draftFavs.filter(f => f.name && f.addr).map(f => ({ ...f }));
@@ -694,31 +722,79 @@ $('#saveSetup').addEventListener('click', async () => {
 $('#connect').addEventListener('click', () => { commitSetup(); login(); });
 $('#refresh').addEventListener('click', () => { commitSetup(); refreshLib(); });
 
-/* ---------- Back up / restore settings ---------- */
-const PREFIX = 'DRIVEMIX1:';
-$('#backup').addEventListener('click', async () => {
+/* ---------- Mood playlist list: mood picks, swipe left to remove ---------- */
+$('#maps').addEventListener('change', e => { const id = e.target.dataset.pl; if (id) draftMap[id] = e.target.value; });
+$('#maps').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  draftHidden.add(b.dataset.del); delete draftMap[b.dataset.del]; renderMaps();
+});
+$('#unhide').addEventListener('click', () => { draftHidden.clear(); renderMaps(); });
+let sw = null;
+const closeRows = except => document.querySelectorAll('#maps .map.open').forEach(r => { if (r !== except) r.classList.remove('open'); });
+$('#maps').addEventListener('pointerdown', e => {
+  const row = e.target.closest('.map'); if (!row || e.target.closest('select,button')) return;
+  sw = { row, x: e.clientX, y: e.clientY, dx: 0, open: row.classList.contains('open'), moving: false };
+});
+$('#maps').addEventListener('pointermove', e => {
+  if (!sw) return;
+  const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if (!sw.moving) {
+    if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }   // vertical scroll
+    if (Math.abs(dx) < 8) return;
+    sw.moving = true; sw.row.classList.add('drag'); closeRows(sw.row);
+    try { sw.row.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  sw.dx = dx;
+  const t = Math.min(0, Math.max(-130, (sw.open ? -100 : 0) + dx));
+  sw.row.querySelector('.mapin').style.transform = `translateX(${t}px)`;
+});
+const endSwipe = () => {
+  if (!sw) return;
+  const { row, open, dx, moving } = sw; sw = null;
+  row.classList.remove('drag'); row.querySelector('.mapin').style.transform = '';
+  if (!moving) return;
+  row.classList.toggle('open', (open ? -100 : 0) + dx < -50);
+};
+$('#maps').addEventListener('pointerup', endSwipe);
+$('#maps').addEventListener('pointercancel', endSwipe);
+
+/* ---------- Back up / restore settings ----------
+   DRIVEMIX2 = hex text: only 0-9 and a-f, so Notes' capitalization, autocorrect
+   or smart punctuation can't change it. DRIVEMIX1 (v12 backups) still restores. */
+const toHex = str => Array.from(new TextEncoder().encode(str), b => b.toString(16).padStart(2, '0')).join('');
+const fromHex = hex => new TextDecoder().decode(new Uint8Array(hex.match(/../g).map(h => parseInt(h, 16))));
+$('#backup').addEventListener('click', () => {
   commitSetup();
-  const data = { cfg, mapping, favs, owned: ownedLists, from: state.from };
-  const text = PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  const box = $('#backupText'); box.value = text; box.classList.remove('hide');
-  try { await navigator.clipboard.writeText(text); setMsg('#backupMsg', 'Copied. Paste it somewhere safe, like Notes.'); }
-  catch (e) { box.focus(); box.select(); setMsg('#backupMsg', 'Select the text above and copy it.'); }
+  const data = { cfg, mapping, favs, owned: ownedLists, hidden: hiddenPl, from: state.from };
+  $('#backupText').value = 'DRIVEMIX2:' + toHex(JSON.stringify(data));
+  $('#backupBox').classList.remove('hide'); $('#copyBackup').textContent = 'Copy';
+  setMsg('#backupMsg', 'Tap Copy, then paste it into a note.');
+});
+$('#copyBackup').addEventListener('click', async () => {
+  const box = $('#backupText');
+  try { await navigator.clipboard.writeText(box.value); $('#copyBackup').textContent = 'Copied ✓'; setMsg('#backupMsg', 'Copied. Paste it into a note and keep it private (it includes your Google key).'); }
+  catch (e) { box.focus(); box.select(); setMsg('#backupMsg', 'Copy didn’t work here. The text is selected; use the iPhone Copy option.', true); }
 });
 $('#restore').addEventListener('click', () => {
   try {
     const raw = $('#restoreText').value.trim();
-    if (!raw.startsWith(PREFIX)) throw new Error();
-    const d = JSON.parse(decodeURIComponent(escape(atob(raw.slice(PREFIX.length)))));
+    const m = raw.match(/^drivemix([12])\s*:\s*([\s\S]+)$/i);
+    if (!m) throw new Error();
+    let json;
+    if (m[1] === '2') { const hex = m[2].replace(/[^0-9a-f]/gi, '').toLowerCase(); json = fromHex(hex); }
+    else json = decodeURIComponent(escape(atob(m[2].replace(/\s+/g, ''))));
+    const d = JSON.parse(json);
     if (!d || typeof d !== 'object' || !Array.isArray(d.favs)) throw new Error();
     cfg = { clientId: '', gkey: '', useLiked: true, ...d.cfg }; LS.set('cfg', cfg);
     mapping = d.mapping || {}; LS.set('mapping', mapping);
     favs = d.favs.filter(f => f && f.id && f.name); LS.set('favs', favs);
     ownedLists = Array.isArray(d.owned) ? d.owned : []; LS.set('owned', ownedLists);
+    hiddenPl = Array.isArray(d.hidden) ? d.hidden : []; LS.set('hiddenPl', hiddenPl);
     if (d.from) { state.from = d.from; LS.set('from', d.from); }
     $('#restoreText').value = '';
     renderSetup(); renderTrip();
     setMsg('#backupMsg', `Restored ${favs.length} favorites and your settings. Now tap Connect Spotify, then Load / refresh my songs.`);
-  } catch (e) { setMsg('#backupMsg', "That doesn't look like a Drive Mix backup. Paste the whole block, starting with DRIVEMIX1:", true); }
+  } catch (e) { setMsg('#backupMsg', "That doesn't look like a Drive Mix backup. Paste the whole block, starting with DRIVEMIX.", true); }
 });
 
 /* ---------- Google address search (Places API New), reusable ---------- */

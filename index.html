@@ -287,8 +287,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 22;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 3:15 PM ET';  // when this version was made
+const APP_VERSION = 23;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 3:30 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -616,8 +616,8 @@ function plan(ctx) {
 }
 /* ---------- Sport mode ---------- */
 const SPORTS = [
-  { id: 'run', name: 'Run', noun: 'run' }, { id: 'ride', name: 'Ride', noun: 'ride' }, { id: 'ski', name: 'Ski', noun: 'ski session' },
-  { id: 'gym', name: 'Gym', noun: 'gym session' }, { id: 'hike', name: 'Hike', noun: 'hike' }, { id: 'other', name: 'Other', noun: 'workout' }
+  { id: 'run', name: 'Run', noun: 'run' }, { id: 'ride', name: 'Bike', noun: 'bike ride' }, { id: 'ski', name: 'Board', noun: 'board session' },
+  { id: 'hike', name: 'Hike', noun: 'hike' }, { id: 'gym', name: 'Gym', noun: 'gym session' }, { id: 'other', name: 'Other', noun: 'workout' }
 ];
 const LENGTHS = [20, 30, 45, 60, 90];
 // w = overall mood weights; ph = [start 20%, middle, last 20%] multipliers
@@ -1223,7 +1223,7 @@ function renderSport() {
   $('#sportHint').classList.toggle('hide', !h);
   $('#routeWrap').classList.toggle('hide', !sroutes.length);
   $('#sportRoute').innerHTML = '<option value="">—</option>' + sroutes.map(r =>
-    `<option value="${esc(r.id)}"${sport.route === r.id ? ' selected' : ''}>${esc(r.name)} · ${r.kind === 'run' ? 'Run' : 'Ride'} · ~${r.min} min</option>`).join('');
+    `<option value="${esc(r.id)}"${sport.route === r.id ? ' selected' : ''}>${esc(r.name)} · ${r.kind === 'run' ? 'Run' : 'Bike'} · ~${r.min} min</option>`).join('');
 }
 $('#sportRoute').addEventListener('change', e => {
   const r = sroutes.find(x => x.id === e.target.value);

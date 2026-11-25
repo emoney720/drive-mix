@@ -67,6 +67,8 @@ button.sec.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .fav .chk{margin-top:4px;min-height:36px;font-size:15px}
 .update{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0 0 16px;padding:12px 16px;min-height:52px;border:0;border-radius:12px;background:var(--singalong);color:#1a1600;font:600 16px Barlow,sans-serif;text-align:left;cursor:pointer}
 .update b{font-family:"Barlow Semi Condensed",sans-serif;font-size:17px;white-space:nowrap}
+textarea{width:100%;min-height:88px;font:15px/1.4 Barlow,system-ui,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical;overflow-wrap:anywhere}
+#backupText{margin-top:10px}
 .pill{font-size:13px;color:var(--dim);text-align:right}
 .pill b{color:var(--ok);font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -209,6 +211,15 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <h2 style="margin-top:18px">Favorites</h2>
       <p class="small">Use ▲ ▼ to set the order on the home screen, ✕ to remove. Rename a favorite, or search to change its address. Changes apply when you tap Save.</p>
       <div id="places"></div>
+
+      <h2 style="margin-top:18px">Back up &amp; restore</h2>
+      <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Load / refresh my songs.</p>
+      <button class="sec" id="backup" type="button">Back up settings</button>
+      <textarea id="backupText" class="hide" readonly aria-label="Your settings backup"></textarea>
+      <label class="l" for="restoreText" style="margin-top:16px">Restore: paste a backup here</label>
+      <textarea id="restoreText" placeholder="DRIVEMIX1:…" autocomplete="off" spellcheck="false"></textarea>
+      <button class="sec" id="restore" type="button">Restore settings</button>
+      <div class="msg" id="backupMsg" role="status"></div>
     </div>
     <div class="dlg-foot">
       <div class="msg" id="setupMsg" role="status"></div>
@@ -222,8 +233,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 11;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 12:25 PM ET';  // when this version was made
+const APP_VERSION = 12;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 12:30 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -650,7 +661,7 @@ $('#copyRedir').addEventListener('click', async () => { try { await navigator.cl
 /* Setup modal: edits only apply on Save */
 const dlg = $('#setup');
 function openSetup() {
-  renderSetup(); setMsg('#setupMsg', '');
+  renderSetup(); setMsg('#setupMsg', ''); setMsg('#backupMsg', ''); $('#backupText').classList.add('hide');
   if (dlg.open) return;
   if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
 }
@@ -682,6 +693,33 @@ $('#saveSetup').addEventListener('click', async () => {
 });
 $('#connect').addEventListener('click', () => { commitSetup(); login(); });
 $('#refresh').addEventListener('click', () => { commitSetup(); refreshLib(); });
+
+/* ---------- Back up / restore settings ---------- */
+const PREFIX = 'DRIVEMIX1:';
+$('#backup').addEventListener('click', async () => {
+  commitSetup();
+  const data = { cfg, mapping, favs, owned: ownedLists, from: state.from };
+  const text = PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const box = $('#backupText'); box.value = text; box.classList.remove('hide');
+  try { await navigator.clipboard.writeText(text); setMsg('#backupMsg', 'Copied. Paste it somewhere safe, like Notes.'); }
+  catch (e) { box.focus(); box.select(); setMsg('#backupMsg', 'Select the text above and copy it.'); }
+});
+$('#restore').addEventListener('click', () => {
+  try {
+    const raw = $('#restoreText').value.trim();
+    if (!raw.startsWith(PREFIX)) throw new Error();
+    const d = JSON.parse(decodeURIComponent(escape(atob(raw.slice(PREFIX.length)))));
+    if (!d || typeof d !== 'object' || !Array.isArray(d.favs)) throw new Error();
+    cfg = { clientId: '', gkey: '', useLiked: true, ...d.cfg }; LS.set('cfg', cfg);
+    mapping = d.mapping || {}; LS.set('mapping', mapping);
+    favs = d.favs.filter(f => f && f.id && f.name); LS.set('favs', favs);
+    ownedLists = Array.isArray(d.owned) ? d.owned : []; LS.set('owned', ownedLists);
+    if (d.from) { state.from = d.from; LS.set('from', d.from); }
+    $('#restoreText').value = '';
+    renderSetup(); renderTrip();
+    setMsg('#backupMsg', `Restored ${favs.length} favorites and your settings. Now tap Connect Spotify, then Load / refresh my songs.`);
+  } catch (e) { setMsg('#backupMsg', "That doesn't look like a Drive Mix backup. Paste the whole block, starting with DRIVEMIX1:", true); }
+});
 
 /* ---------- Google address search (Places API New), reusable ---------- */
 const newToken = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));

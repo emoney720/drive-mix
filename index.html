@@ -48,6 +48,21 @@ dialog#setup::backdrop{background:rgba(0,0,0,.6)}
 .sugg li.attr{font-size:12px;color:var(--dim);text-align:right;cursor:default;background:none;padding:4px 8px}
 .picked{font-size:13px;color:var(--ok);margin-top:6px}
 #reset{margin-top:16px}
+#to{margin-bottom:6px}
+.chip.add{border-style:dashed;color:var(--dim)}
+.favlabel{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
+.picked:empty{display:none}
+.addfav{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.addfav input[type=text]{background:var(--panel)}
+.addfav .row .sec{margin-top:12px}
+button.sec.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.fav{border-top:1px solid var(--line);padding:12px 0}
+.favtop{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 44px;gap:6px}
+.favtop button{min-height:44px;font-size:15px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.favtop button:disabled{opacity:.3;cursor:default}
+.favtop button[data-act=del]{color:#ff9b8a}
+.fav input[data-f=addr]{margin-top:6px}
+.fav .chk{margin-top:4px;min-height:36px;font-size:15px}
 .pill{font-size:13px;color:var(--dim);text-align:right}
 .pill b{color:var(--ok);font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -114,12 +129,28 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
   <section class="card" id="trip">
     <label class="l" for="from">From</label>
     <select id="from"></select>
-    <label class="l">To</label>
-    <div class="chips" id="to"></div>
-    <div class="ac hide" id="customWrap">
-      <input type="text" id="custom" autocomplete="off" spellcheck="false" placeholder="Search an address or place" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
+    <label class="l" for="custom">To</label>
+    <div class="ac" id="customWrap">
+      <input type="text" id="custom" autocomplete="off" spellcheck="false" placeholder="Search a destination" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
       <ul class="sugg hide" id="sugg" role="listbox"></ul>
-      <div class="picked" id="picked"></div>
+    </div>
+    <div class="picked" id="picked"></div>
+    <span class="favlabel">Favorites</span>
+    <div class="chips" id="to"></div>
+    <div class="addfav hide" id="addFav">
+      <label class="l" for="favName">Favorite name</label>
+      <input type="text" id="favName" autocomplete="off" placeholder="e.g. Mad River Glen">
+      <label class="l" for="favAddr">Address</label>
+      <div class="ac" style="margin-top:0">
+        <input type="text" id="favAddr" autocomplete="off" spellcheck="false" placeholder="Search an address or place" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="favSugg">
+        <ul class="sugg hide" id="favSugg" role="listbox"></ul>
+      </div>
+      <label class="chk"><input type="checkbox" id="favSki"> Ski area (builds hype on the way there)</label>
+      <div class="row">
+        <button class="sec" id="favCancel" type="button">Cancel</button>
+        <button class="sec pri" id="favSave" type="button">Save favorite</button>
+      </div>
+      <div class="msg" id="favMsg" role="status"></div>
     </div>
     <div class="row">
       <div><label class="l" for="leave">Leaving at</label><input type="time" id="leave"></div>
@@ -157,7 +188,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
       <label class="l" for="gkey">Google Maps API key (Routes API + Places API (New)) — optional</label>
       <input type="password" id="gkey" autocomplete="off" spellcheck="false" placeholder="Without it, a free backup router is used">
-      <p class="small">With a key you get traffic-aware drive times and address search for "Other…". Without one, presets still work.</p>
+      <p class="small">With a key you get traffic-aware drive times and address search. Without one, presets still work.</p>
 
       <h2 style="margin-top:18px">Mood playlists</h2>
       <p class="small">Assign your own playlists to a mood. Only playlists you own or collaborate on can be read.</p>
@@ -166,8 +197,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <button class="sec" id="refresh">Load / refresh my songs</button>
       <div class="counts" id="counts"></div>
 
-      <h2 style="margin-top:18px">Places</h2>
-      <p class="small">Add a street address to make any preset exact (used with a Google key and for navigation).</p>
+      <h2 style="margin-top:18px">Favorites</h2>
+      <p class="small">Use ▲ ▼ to set the order on the home screen, ✕ to remove. You can also rename a favorite or change its address. Changes apply when you tap Save.</p>
       <div id="places"></div>
     </div>
     <div class="dlg-foot">
@@ -182,8 +213,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 4;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 10:10 AM ET';  // when this version was made
+const APP_VERSION = 5;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 10:50 AM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -208,15 +239,24 @@ const DEFAULT_PLACES = [
   { id: 'burlington', name: 'Burlington', lat: 44.4759, lon: -73.2121, q: 'Burlington, VT' },
   { id: 'stowe', name: 'Stowe', lat: 44.5303, lon: -72.7814, q: 'Stowe Mountain Resort, Stowe, VT', ski: true }
 ];
-let addrs = LS.get('addrs', {});
-const places = () => DEFAULT_PLACES.map(p => ({ ...p, addr: (addrs[p.id] || '').trim() }));
+function loadFavs() {
+  let f = LS.get('favs', null);
+  if (!Array.isArray(f)) {           // first run of v5: build from the original presets (+ any addresses saved in Setup)
+    const old = LS.get('addrs', {});
+    f = DEFAULT_PLACES.map(p => ({ id: p.id, name: p.name, addr: (old[p.id] || p.q).trim(), lat: p.lat, lon: p.lon, ski: !!p.ski }));
+    LS.set('favs', f);
+  }
+  return f;
+}
+let favs = loadFavs();
+const favById = id => favs.find(f => f.id === id);
 
 let cfg = LS.get('cfg', { clientId: '', gkey: '', useLiked: true });
 let tok = LS.get('tok', null);
 let mapping = LS.get('mapping', {});
 let lib = LS.get('lib', null);
 let ownedLists = LS.get('owned', []);
-let state = { from: LS.get('from', 'here'), to: LS.get('to', 'sugarbush'), ctx: null, plan: null, mix: null };
+let state = { from: LS.get('from', 'here'), to: LS.get('to', null), picked: null, ctx: null, plan: null, mix: null };
 
 /* ---------- Spotify auth (PKCE, no secret needed) ---------- */
 const SCOPES = 'playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read';
@@ -422,16 +462,13 @@ function buildMix(ctx, P) {
 async function build() {
   const btn = $('#build'); btn.disabled = true; setMsg('#tripMsg', 'Checking the route and weather…');
   try {
-    const P = places();
-    const from = state.from === 'here' ? await geo() : P.find(p => p.id === state.from);
-    let to;
-    if (state.to === 'custom') {
+    const from = state.from === 'here' ? await geo() : favById(state.from);
+    if (!from) throw new Error('Pick where you are starting from.');
+    let to = state.to && state.to !== 'custom' ? favById(state.to) : null;
+    if (!to) {
       const q = $('#custom').value.trim();
-      if (!q) throw new Error('Search for a destination first.');
+      if (!q) throw new Error('Search for a destination or tap a favorite.');
       to = state.picked && state.picked.label === q ? state.picked : { id: 'custom', name: q, addr: q, lat: null };
-    } else {
-      to = P.find(p => p.id === state.to);
-      if (!to) throw new Error('Pick a destination.');
     }
     const [hh, mm] = ($('#leave').value || '').split(':').map(Number);
     let when = new Date(); if (!isNaN(hh)) { when.setHours(hh, mm, 0, 0); if (when < Date.now() - 30 * 60000) when.setDate(when.getDate() + 1); }
@@ -479,13 +516,12 @@ function renderStatus() {
   $('#status').innerHTML = tok ? `<b>Spotify connected</b><br>${n} songs loaded` : 'Spotify not connected';
 }
 function renderTrip() {
-  const P = places();
-  $('#from').innerHTML = `<option value="here">Current location</option>` + P.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if (state.from !== 'here' && !favById(state.from)) state.from = 'here';
+  $('#from').innerHTML = `<option value="here">Current location</option>` + favs.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
   $('#from').value = state.from;
-  $('#to').innerHTML = P.filter(p => !p.home || p.id === 'lincoln' || p.id === 'brandon').map(p =>
-    `<button class="chip" type="button" data-id="${p.id}" aria-pressed="${state.to === p.id}">${esc(p.name)}</button>`).join('') +
-    `<button class="chip" type="button" data-id="custom" aria-pressed="${state.to === 'custom'}">Other…</button>`;
-  $('#customWrap').classList.toggle('hide', state.to !== 'custom');
+  $('#to').innerHTML = favs.map(p =>
+    `<button class="chip" type="button" data-id="${esc(p.id)}" aria-pressed="${state.to === p.id}">${esc(p.name)}</button>`).join('') +
+    `<button class="chip add" type="button" data-id="__add">＋ Add favorite</button>`;
 }
 function renderResult() {
   const { ctx, plan: P, mix } = state;
@@ -536,22 +572,53 @@ function renderSetup() {
   $('#maps').innerHTML = ownedLists.length
     ? ownedLists.map(p => `<div class="map"><span>${esc(p.name)}</span><select data-pl="${esc(p.id)}" aria-label="Mood for ${esc(p.name)}">${opts(p.id)}</select></div>`).join('')
     : `<p class="small">${tok ? 'No playlists of your own found.' : 'Connect Spotify to see your playlists.'}</p>`;
-  $('#places').innerHTML = places().map(p => `<label class="l" for="addr-${p.id}">${esc(p.name)}</label>
-    <input type="text" id="addr-${p.id}" data-place="${p.id}" value="${esc(p.addr)}" placeholder="${esc(p.q)} (town center)">`).join('');
+  draftFavs = favs.map(f => ({ ...f }));
+  renderFavList();
   renderCounts();
 }
 function renderCounts() {
   $('#counts').innerHTML = lib ? BUCKETS.map(b => `<span><i class="dot" style="background:${COL(b.id)}"></i>${b.name}: ${lib[b.id]?.length || 0}</span>`).join('') : '';
 }
 
+/* ---------- Favorites list in Setup (draft until Save) ---------- */
+let draftFavs = [];
+function renderFavList() {
+  const n = draftFavs.length;
+  $('#places').innerHTML = n ? draftFavs.map((f, i) => `<div class="fav" data-i="${i}">
+      <div class="favtop">
+        <input type="text" data-f="name" value="${esc(f.name)}" aria-label="Favorite name">
+        <button type="button" data-act="up" aria-label="Move ${esc(f.name)} up"${i === 0 ? ' disabled' : ''}>▲</button>
+        <button type="button" data-act="down" aria-label="Move ${esc(f.name)} down"${i === n - 1 ? ' disabled' : ''}>▼</button>
+        <button type="button" data-act="del" aria-label="Remove ${esc(f.name)}">✕</button>
+      </div>
+      <input type="text" data-f="addr" value="${esc(f.addr)}" placeholder="Address" aria-label="Address for ${esc(f.name)}">
+      <label class="chk"><input type="checkbox" data-f="ski"${f.ski ? ' checked' : ''}> Ski area</label>
+    </div>`).join('') : '<p class="small">No favorites. Add one from the home screen with "＋ Add favorite".</p>';
+}
+function syncDraft() {
+  document.querySelectorAll('#places .fav').forEach(row => {
+    const f = draftFavs[+row.dataset.i]; if (!f) return;
+    f.name = row.querySelector('[data-f=name]').value.trim() || f.name;
+    f.addr = row.querySelector('[data-f=addr]').value.trim();
+    f.ski = row.querySelector('[data-f=ski]').checked;
+  });
+}
+$('#places').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  syncDraft();
+  const i = +b.closest('.fav').dataset.i, a = b.dataset.act;
+  if (a === 'del') draftFavs.splice(i, 1);
+  else { const j = a === 'up' ? i - 1 : i + 1; if (j < 0 || j >= draftFavs.length) return; [draftFavs[i], draftFavs[j]] = [draftFavs[j], draftFavs[i]]; }
+  renderFavList();
+});
+
 /* ---------- Events ---------- */
 $('#from').addEventListener('change', e => { state.from = e.target.value; LS.set('from', state.from); });
-$('#to').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; state.to = b.dataset.id; LS.set('to', state.to); renderTrip(); if (state.to === 'custom') $('#custom').focus(); });
 $('#build').addEventListener('click', build);
 $('#reshuffle').addEventListener('click', reshuffle);
 $('#save').addEventListener('click', save);
-$('#connect').addEventListener('click', login);
-$('#refresh').addEventListener('click', refreshLib);
+$('#copyRedir').addEventListener('click', async () => { try { await navigator.clipboard.writeText(redirect()); $('#copyRedir').textContent = 'Copied'; } catch (e) { $('#copyRedir').textContent = 'Select it'; } });
+
 /* Setup modal: edits only apply on Save */
 const dlg = $('#setup');
 function openSetup() {
@@ -566,8 +633,15 @@ function commitSetup() {
   const before = JSON.stringify(mapping);
   document.querySelectorAll('#maps select[data-pl]').forEach(sel => { mapping[sel.dataset.pl] = sel.value; });
   LS.set('mapping', mapping);
-  document.querySelectorAll('#places input[data-place]').forEach(i => { addrs[i.dataset.place] = i.value.trim(); });
-  LS.set('addrs', addrs);
+  syncDraft();
+  favs = draftFavs.filter(f => f.name && f.addr).map(f => {
+    const orig = favById(f.id);
+    return orig && orig.addr !== f.addr ? { ...f, lat: null, lon: null } : { ...f };   // new address → old map pin no longer applies
+  });
+  LS.set('favs', favs);
+  draftFavs = favs.map(f => ({ ...f }));
+  if (state.to && state.to !== 'custom' && !favById(state.to)) clearDestination();
+  else if (state.to && favById(state.to)) selectFav(state.to);
   renderTrip();
   return before !== JSON.stringify(mapping);
 }
@@ -584,86 +658,132 @@ $('#saveSetup').addEventListener('click', async () => {
 $('#connect').addEventListener('click', () => { commitSetup(); login(); });
 $('#refresh').addEventListener('click', () => { commitSetup(); refreshLib(); });
 
+/* ---------- Google address search (Places API New), reusable ---------- */
+const newToken = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+function makeAC(input, list, onPick) {
+  const ac = { timer: null, seq: 0, token: null, items: [], idx: -1 };
+  const hide = () => { list.classList.add('hide'); list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); ac.idx = -1; };
+  const note = t => { list.innerHTML = `<li class="attr" style="text-align:left">${esc(t)}</li>`; list.classList.remove('hide'); };
+  const render = () => {
+    if (!ac.items.length) return note('No matches yet — keep typing.');
+    list.innerHTML = ac.items.map((it, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}" aria-selected="${i === ac.idx}">
+      <div class="m">${esc(it.main)}</div><div class="s">${esc(it.sec)}</div></li>`).join('') + '<li class="attr">Powered by Google</li>';
+    list.classList.remove('hide'); input.setAttribute('aria-expanded', 'true');
+  };
+  async function search(q) {
+    const seq = ++ac.seq;
+    if (q.length < 3) return hide();
+    if (!cfg.gkey) return note('Add a Google API key in Setup for address search. A full typed address still works.');
+    ac.token = ac.token || newToken();
+    try {
+      const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': cfg.gkey },
+        body: JSON.stringify({ input: q, sessionToken: ac.token, includedRegionCodes: ['us'],
+          locationBias: { circle: { center: { latitude: 44.2, longitude: -72.95 }, radius: 50000 } } })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (seq !== ac.seq) return;
+      if (!r.ok) throw new Error(j.error?.message || 'error ' + r.status);
+      ac.items = (j.suggestions || []).map(x => x.placePrediction).filter(Boolean).map(p => ({
+        id: p.placeId, full: p.text?.text || '', main: p.structuredFormat?.mainText?.text || p.text?.text || '', sec: p.structuredFormat?.secondaryText?.text || ''
+      }));
+      ac.idx = -1; render();
+    } catch (e) { if (seq === ac.seq) note('Address search unavailable: ' + e.message); }
+  }
+  async function pick(i) {
+    const it = ac.items[i]; if (!it) return;
+    hide(); input.value = it.full;
+    let place;
+    try {
+      const r = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(it.id)}?sessionToken=${encodeURIComponent(ac.token || '')}`, {
+        headers: { 'X-Goog-Api-Key': cfg.gkey, 'X-Goog-FieldMask': 'location,formattedAddress' }
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error?.message || 'error');
+      const addr = j.formattedAddress || it.full;
+      place = { name: it.main, addr, label: addr, lat: j.location?.latitude ?? null, lon: j.location?.longitude ?? null };
+    } catch (e) { place = { name: it.main, addr: it.full, label: it.full, lat: null, lon: null }; }
+    ac.token = null; input.value = place.label;
+    onPick(place);
+  }
+  input.addEventListener('input', () => { clearTimeout(ac.timer); const q = input.value.trim(); ac.timer = setTimeout(() => search(q), 250); });
+  input.addEventListener('keydown', e => {
+    if (list.classList.contains('hide') || !ac.items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); ac.idx = (ac.idx + (e.key === 'ArrowDown' ? 1 : -1) + ac.items.length) % ac.items.length; render();
+      input.setAttribute('aria-activedescendant', list.id + '-' + ac.idx);
+    } else if (e.key === 'Enter' && ac.idx >= 0) { e.preventDefault(); pick(ac.idx); }
+    else if (e.key === 'Escape') hide();
+  });
+  list.addEventListener('pointerdown', e => { const li = e.target.closest('li[data-i]'); if (!li) return; e.preventDefault(); pick(+li.dataset.i); });
+  input.addEventListener('blur', () => setTimeout(hide, 150));
+  return { hide };
+}
+
+/* ---------- Destination: search box + favorites ---------- */
+const custom = $('#custom');
+function showPicked(addr) { $('#picked').textContent = addr ? '✓ ' + addr : ''; }
+function selectFav(id) {
+  const f = favById(id); if (!f) return;
+  state.to = id; state.picked = null; LS.set('to', id);
+  custom.value = f.name; showPicked(f.addr); mainAC.hide();
+}
+function clearDestination() {
+  state.to = null; state.picked = null; LS.set('to', null);
+  custom.value = ''; showPicked(''); mainAC.hide();
+}
+const mainAC = makeAC(custom, $('#sugg'), place => {
+  state.to = 'custom'; state.picked = { id: 'custom', ...place }; LS.set('to', null);
+  showPicked(place.addr); renderTrip();
+});
+custom.addEventListener('input', () => { state.to = 'custom'; state.picked = null; showPicked(''); renderTrip(); });
+$('#to').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  if (b.dataset.id === '__add') return openAddFav();
+  selectFav(b.dataset.id); renderTrip();
+});
+
+/* Add favorite (prefills from the address you just searched, if any) */
+let favPick = null;
+const favAC = makeAC($('#favAddr'), $('#favSugg'), place => {
+  favPick = place;
+  if (!$('#favName').value.trim()) $('#favName').value = place.name;
+});
+$('#favAddr').addEventListener('input', () => { favPick = null; });
+function openAddFav() {
+  const p = state.to === 'custom' ? state.picked : null;
+  $('#favName').value = p ? p.name : '';
+  $('#favAddr').value = p ? p.addr : '';
+  favPick = p ? { ...p, label: p.addr } : null;
+  $('#favSki').checked = false; setMsg('#favMsg', '');
+  $('#addFav').classList.remove('hide');
+  $('#favName').focus();
+}
+function closeAddFav() { $('#addFav').classList.add('hide'); favAC.hide(); }
+$('#favCancel').addEventListener('click', closeAddFav);
+$('#favSave').addEventListener('click', () => {
+  const name = $('#favName').value.trim(), addr = $('#favAddr').value.trim();
+  if (!name || !addr) return setMsg('#favMsg', 'Give it a name and an address.', true);
+  const p = favPick && favPick.label === addr ? favPick : { addr, lat: null, lon: null };
+  const f = { id: 'f' + Date.now().toString(36), name, addr: p.addr, lat: p.lat ?? null, lon: p.lon ?? null, ski: $('#favSki').checked };
+  favs.push(f); LS.set('favs', favs);
+  closeAddFav(); selectFav(f.id); renderTrip();
+});
+
 /* Reset back to a clean trip screen */
 function setNow() { const n = new Date(); $('#leave').value = String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); }
 $('#reset').addEventListener('click', () => {
-  Object.assign(state, { to: null, ctx: null, plan: null, mix: null, savedId: null, savedName: null, picked: null });
-  LS.set('to', null);
-  $('#custom').value = ''; $('#picked').textContent = ''; hideSugg();
+  Object.assign(state, { ctx: null, plan: null, mix: null, savedId: null, savedName: null });
+  clearDestination(); closeAddFav();
   $('#result').classList.add('hide'); $('#tracks').innerHTML = ''; strip.innerHTML = '';
   setMsg('#tripMsg', ''); setMsg('#saveMsg', '');
   $('#extra').value = '1.1'; setNow(); renderTrip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-/* "Other…" — Google address search (Places API New) */
-let acTimer = null, acSeq = 0, acToken = null, acItems = [], acIdx = -1;
-const sugg = $('#sugg'), custom = $('#custom');
-const newToken = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
-function hideSugg() { sugg.classList.add('hide'); sugg.innerHTML = ''; custom.setAttribute('aria-expanded', 'false'); acIdx = -1; }
-function suggNote(text) { sugg.innerHTML = `<li class="attr" style="text-align:left">${esc(text)}</li>`; sugg.classList.remove('hide'); }
-function renderSugg() {
-  if (!acItems.length) return suggNote('No matches yet — keep typing.');
-  sugg.innerHTML = acItems.map((it, i) => `<li role="option" id="sugg-${i}" data-i="${i}" aria-selected="${i === acIdx}">
-    <div class="m">${esc(it.main)}</div><div class="s">${esc(it.sec)}</div></li>`).join('') + '<li class="attr">Powered by Google</li>';
-  sugg.classList.remove('hide'); custom.setAttribute('aria-expanded', 'true');
-}
-async function acSearch(q) {
-  const seq = ++acSeq;
-  if (q.length < 3) return hideSugg();
-  if (!cfg.gkey) return suggNote('Add a Google API key in Setup for address search. A full typed address still works.');
-  acToken = acToken || newToken();
-  try {
-    const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': cfg.gkey },
-      body: JSON.stringify({ input: q, sessionToken: acToken, includedRegionCodes: ['us'],
-        locationBias: { circle: { center: { latitude: 44.2, longitude: -72.95 }, radius: 50000 } } })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (seq !== acSeq) return;
-    if (!r.ok) throw new Error(j.error?.message || 'error ' + r.status);
-    acItems = (j.suggestions || []).map(x => x.placePrediction).filter(Boolean).map(p => ({
-      id: p.placeId, full: p.text?.text || '', main: p.structuredFormat?.mainText?.text || p.text?.text || '', sec: p.structuredFormat?.secondaryText?.text || ''
-    }));
-    acIdx = -1; renderSugg();
-  } catch (e) { if (seq === acSeq) suggNote('Address search unavailable: ' + e.message); }
-}
-async function pick(i) {
-  const it = acItems[i]; if (!it) return;
-  hideSugg(); custom.value = it.full;
-  try {
-    const r = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(it.id)}?sessionToken=${encodeURIComponent(acToken || '')}`, {
-      headers: { 'X-Goog-Api-Key': cfg.gkey, 'X-Goog-FieldMask': 'location,formattedAddress' }
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error?.message || 'error');
-    const addr = j.formattedAddress || it.full;
-    state.picked = { id: 'custom', name: it.main, addr, label: addr, lat: j.location?.latitude ?? null, lon: j.location?.longitude ?? null };
-  } catch (e) {
-    state.picked = { id: 'custom', name: it.main, addr: it.full, label: it.full, lat: null };
-  }
-  acToken = null; custom.value = state.picked.label;
-  $('#picked').textContent = '✓ ' + state.picked.addr;
-}
-custom.addEventListener('input', () => {
-  state.picked = null; $('#picked').textContent = '';
-  clearTimeout(acTimer); const q = custom.value.trim();
-  acTimer = setTimeout(() => acSearch(q), 250);
-});
-custom.addEventListener('keydown', e => {
-  if (sugg.classList.contains('hide') || !acItems.length) return;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault(); acIdx = (acIdx + (e.key === 'ArrowDown' ? 1 : -1) + acItems.length) % acItems.length; renderSugg();
-    custom.setAttribute('aria-activedescendant', 'sugg-' + acIdx);
-  } else if (e.key === 'Enter' && acIdx >= 0) { e.preventDefault(); pick(acIdx); }
-  else if (e.key === 'Escape') hideSugg();
-});
-sugg.addEventListener('pointerdown', e => { const li = e.target.closest('li[data-i]'); if (!li) return; e.preventDefault(); pick(+li.dataset.i); });
-custom.addEventListener('blur', () => setTimeout(hideSugg, 150));
-$('#copyRedir').addEventListener('click', async () => { try { await navigator.clipboard.writeText(redirect()); $('#copyRedir').textContent = 'Copied'; } catch (e) { $('#copyRedir').textContent = 'Select it'; } });
-
 /* ---------- Start ---------- */
 setNow();
+if (state.to && favById(state.to)) selectFav(state.to); else clearDestination();
 renderTrip(); renderSetup(); renderStatus();
 if (!tok || !lib) openSetup();
 handleCallback().then(renderStatus).catch(e => setMsg('#setupMsg', e.message, true));

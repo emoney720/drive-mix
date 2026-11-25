@@ -214,7 +214,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <div id="maps"><p class="small">Connect Spotify to see your playlists.</p></div>
       <button class="linkbtn hide" id="unhide" type="button"></button>
       <label class="chk"><input type="checkbox" id="useLiked"> Mix in Liked Songs as a wildcard</label>
-      <button class="sec" id="refresh">Load / refresh my songs</button>
+      <button class="sec" id="refresh">Refresh playlists &amp; songs</button>
       <div class="counts" id="counts"></div>
 
       <h2 style="margin-top:18px">Favorites</h2>
@@ -222,7 +222,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <div id="places"></div>
 
       <h2 style="margin-top:18px">Back up &amp; restore</h2>
-      <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Load / refresh my songs.</p>
+      <p class="small">Back up copies your Client ID, Google key, playlist moods and favorites as one block of text. Paste it into Notes, then into another copy of the app to restore. It includes your Google key, so keep it private. Spotify sign-in and loaded songs aren't included: after restoring, tap Connect Spotify, then Refresh playlists &amp; songs.</p>
       <button class="sec" id="backup" type="button">Back up settings</button>
       <div id="backupBox" class="hide">
         <textarea id="backupText" readonly aria-label="Your settings backup"></textarea>
@@ -245,8 +245,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 15;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 1:00 PM ET';  // when this version was made
+const APP_VERSION = 16;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 1:05 PM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -328,7 +328,7 @@ async function handleCallback() {
   await tokenCall({ grant_type: 'authorization_code', code: p.get('code'), redirect_uri: redirect(), code_verifier: LS.get('verifier', '') });
   await loadPlaylists();
   openSetup();
-  setMsg('#setupMsg', 'Connected. Assign playlists to moods, then tap "Load / refresh my songs".');
+  setMsg('#setupMsg', 'Connected. Assign playlists to moods, then tap "Refresh playlists & songs".');
 }
 async function access() {
   if (!tok) throw new Error('Connect Spotify in Setup first.');
@@ -475,7 +475,7 @@ function phase(frac, ctx) {
 }
 function buildMix(ctx, P) {
   const avail = BUCKETS.filter(b => (lib?.[b.id] || []).length && (b.id !== 'liked' || cfg.useLiked));
-  if (!avail.length) throw new Error('No songs loaded yet — open Setup, assign playlists, then tap "Load / refresh my songs".');
+  if (!avail.length) throw new Error('No songs loaded yet — open Setup, assign playlists, then tap "Refresh playlists & songs".');
   const target = ctx.min * 60000 * ctx.extra, used = new Set(), out = [];
   let total = 0, last = '', guard = 0;
   while (total < target && out.length < 100 && guard++ < 3000) {
@@ -722,7 +722,14 @@ $('#saveSetup').addEventListener('click', async () => {
   if (ok) closeSetup();
 });
 $('#connect').addEventListener('click', () => { commitSetup(); login(); });
-$('#refresh').addEventListener('click', () => { commitSetup(); refreshLib(); });
+$('#refresh').addEventListener('click', async () => {
+  commitSetup();
+  if (tok) {
+    setMsg('#setupMsg', 'Checking Spotify for new playlists…');
+    try { await loadPlaylists(); } catch (e) { return setMsg('#setupMsg', e.message, true); }
+  }
+  refreshLib();
+});
 
 /* ---------- Mood playlist list: mood picks, swipe left to remove ---------- */
 $('#maps').addEventListener('change', e => { const id = e.target.dataset.pl; if (id) draftMap[id] = e.target.value; });
@@ -795,7 +802,7 @@ $('#restore').addEventListener('click', () => {
     if (d.from) { state.from = d.from; LS.set('from', d.from); }
     $('#restoreText').value = '';
     renderSetup(); renderTrip();
-    setMsg('#backupMsg', `Restored ${favs.length} favorites and your settings. Now tap Connect Spotify, then Load / refresh my songs.`);
+    setMsg('#backupMsg', `Restored ${favs.length} favorites and your settings. Now tap Connect Spotify, then Refresh playlists & songs.`);
   } catch (e) { setMsg('#backupMsg', "That doesn't look like a Drive Mix backup. Paste the whole block, starting with DRIVEMIX.", true); }
 });
 

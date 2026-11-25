@@ -63,6 +63,8 @@ button.sec.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 .favtop button[data-act=del]{color:#ff9b8a}
 .fav input[data-f=addr]{margin-top:6px}
 .fav .chk{margin-top:4px;min-height:36px;font-size:15px}
+.update{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0 0 16px;padding:12px 16px;min-height:52px;border:0;border-radius:12px;background:var(--singalong);color:#1a1600;font:600 16px Barlow,sans-serif;text-align:left;cursor:pointer}
+.update b{font-family:"Barlow Semi Condensed",sans-serif;font-size:17px;white-space:nowrap}
 .pill{font-size:13px;color:var(--dim);text-align:right}
 .pill b{color:var(--ok);font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -130,6 +132,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
       <div class="pill" id="status">Spotify not connected</div>
     </div>
   </div>
+
+  <button class="update hide" id="update" type="button"></button>
 
   <section class="card" id="trip">
     <label class="l" for="from">From</label>
@@ -218,8 +222,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 6;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 25, 2026 · 11:40 AM ET';  // when this version was made
+const APP_VERSION = 7;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 25, 2026 · 11:45 AM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -793,7 +797,28 @@ $('#reset').addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
+/* ---------- Update check: compare with the live copy on GitHub ---------- */
+let lastCheck = 0, newer = 0;
+async function checkUpdate() {
+  if (Date.now() - lastCheck < 60000) return;
+  lastCheck = Date.now();
+  try {
+    const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+    const m = (await r.text()).match(/APP_VERSION = (\d+)/);
+    newer = m ? +m[1] : 0;
+    if (newer > APP_VERSION) {
+      const b = $('#update');
+      b.innerHTML = `<span>Drive Mix v${newer} is available</span><b>Tap to update</b>`;
+      b.classList.remove('hide');
+    }
+  } catch (e) { /* offline: try again next time */ }
+}
+$('#update').addEventListener('click', () => { location.replace(location.pathname + '?v=' + newer); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
 /* ---------- Start ---------- */
+if (new URLSearchParams(location.search).has('v')) history.replaceState(null, '', redirect());
+checkUpdate();
 setNow();
 if (state.to && favById(state.to)) selectFav(state.to); else clearDestination();
 renderTrip(); renderSetup(); renderStatus();

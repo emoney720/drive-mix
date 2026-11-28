@@ -125,6 +125,7 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 .map.drag .mapin{transition:none}
 .map.open .mapin{transform:translateX(-100px)}
 .mapdel{position:absolute;right:0;top:4px;bottom:4px;width:92px;border:0;border-radius:10px;background:#c0392b;color:#fff;font:600 15px Barlow,sans-serif;cursor:pointer}
+.auto{font-style:normal;font-size:11px;font-weight:600;color:#1a1600;background:var(--singalong);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:1px}
 .linkbtn{background:none;border:0;color:var(--dim);font:inherit;font-size:14px;text-decoration:underline;padding:10px 0;min-height:44px;cursor:pointer}
 .map select{min-height:40px;padding:8px}
 .copy{display:flex;gap:8px}.copy code{flex:1;background:var(--bg);border-radius:8px;padding:10px;font-size:13px;overflow-wrap:anywhere}
@@ -287,8 +288,8 @@ details summary{cursor:pointer;font:700 20px "Barlow Semi Condensed",sans-serif;
 
 <script>
 {
-const APP_VERSION = 25;                          // +1 with every new index.html
-const APP_UPDATED = 'Nov 28, 2026 · 10:20 AM ET';  // when this version was made
+const APP_VERSION = 26;                          // +1 with every new index.html
+const APP_UPDATED = 'Nov 28, 2026 · 10:40 AM ET';  // when this version was made
 const $ = s => document.querySelector(s);
 $('#ver').innerHTML = `<b>v${APP_VERSION}</b> · Updated ${APP_UPDATED}`;
 const LS = {
@@ -499,9 +500,29 @@ async function loadPlaylists() {
   LS.set('me', me.display_name || me.id);
   let url = '/me/playlists?limit=50', out = [];
   while (url) { const j = await sp(url); out.push(...(j.items || []).filter(Boolean)); url = j.next; }
-  ownedLists = out.filter(p => (p.owner?.id === me.id || p.collaborative) && !isDriveMix(p.name)).map(p => ({ id: p.id, name: p.name }));
+  const usable = out.filter(p => (p.owner?.id === me.id || p.collaborative) && !isDriveMix(p.name));
+  ownedLists = usable.map(p => ({ id: p.id, name: p.name }));
   LS.set('owned', ownedLists);
+  // New playlists never arrive without a mood: make a best guess and flag it "Auto" for review
+  const auto = new Set(LS.get('autoPl', []));
+  let added = 0;
+  for (const p of usable) {
+    if (mapping[p.id] || hiddenPl.includes(p.id)) continue;   // anything without a mood gets one
+    mapping[p.id] = guessMood(p.name, p.description); auto.add(p.id); added++;
+  }
+  if (added) { LS.set('mapping', mapping); LS.set('autoPl', [...auto]); }
   renderSetup();
+  if (added) setMsg('#setupMsg', `Sorted ${added} new playlist${added === 1 ? '' : 's'} into moods. Check the ones marked Auto, then tap Save.`);
+  return added;
+}
+/* Best-guess mood from a playlist's name and description */
+function guessMood(name, desc) {
+  const t = ((name || '') + ' ' + (desc || '')).toLowerCase().replace(/<[^>]*>/g, ' ');
+  const has = re => re.test(t);
+  if (has(/\b(chill|calm|relax\w*|mellow|acoustic|lo-?fi|sleep\w*|study|focus|coffee|cafe|jazz|piano|ambient|soft|quiet|rainy|sunday|morning|unwind|slow|easy|cozy|evening|night)\b/)) return 'chill';
+  if (has(/\b(workout|gym|run\w*|cardio|hiit|train\w*|lift\w*|hype|pump\w*|beast|power|energy|party|dance|edm|house|techno|bass|rage|metal|punk|fast|go|ski|shred|race|sprint)\b/)) return 'upbeat';
+  if (has(/\b(sing\w*|karaoke|throwback\w*|classic\w*|oldies|anthem\w*|hits|nostalgi\w*|[5-9]0s|2000s|00s|decades?|campfire|favorites|favourites|guilty)\b/)) return 'singalong';
+  return 'cruise';   // road, drive, summer, vibes and anything unclear
 }
 async function playlistTracks(id) {
   let url = `/playlists/${id}/items?limit=50`, out = [];
@@ -863,20 +884,21 @@ function renderSetup() {
   $('#disconnectStrava').classList.toggle('hide', !stok);
   $('#redir').textContent = redirect();
   $('#connect').textContent = tok ? 'Reconnect Spotify (' + LS.get('me', 'connected') + ')' : 'Connect Spotify';
-  draftMap = { ...mapping }; draftHidden = new Set(hiddenPl);
+  draftMap = { ...mapping }; draftHidden = new Set(hiddenPl); draftReviewed = new Set(); autoPl = new Set(LS.get('autoPl', []));
   renderMaps();
   draftFavs = favs.map(f => ({ ...f }));
   renderFavList();
   renderCounts();
 }
-let draftMap = {}, draftHidden = new Set();
+let draftMap = {}, draftHidden = new Set(), draftReviewed = new Set();
+let autoPl = new Set(LS.get('autoPl', []));
 function renderMaps() {
   const lists = ownedLists.filter(p => !isDriveMix(p.name) && !draftHidden.has(p.id));
-  const opts = id => `<option value="">—</option>` + BUCKETS.filter(b => b.id !== 'liked').map(b => `<option value="${b.id}"${draftMap[id] === b.id ? ' selected' : ''}>${b.name}</option>`).join('');
+  const opts = id => BUCKETS.filter(b => b.id !== 'liked').map(b => `<option value="${b.id}"${draftMap[id] === b.id ? ' selected' : ''}>${b.name}</option>`).join('');
   $('#maps').innerHTML = lists.length
     ? lists.map(p => `<div class="map" data-pl="${esc(p.id)}">
         <button class="mapdel" type="button" data-del="${esc(p.id)}" tabindex="-1">Remove</button>
-        <div class="mapin"><span>${esc(p.name)}</span><select data-pl="${esc(p.id)}" aria-label="Mood for ${esc(p.name)}">${opts(p.id)}</select></div>
+        <div class="mapin"><span>${esc(p.name)}${autoPl.has(p.id) ? ' <em class="auto">Auto</em>' : ''}</span><select data-pl="${esc(p.id)}" aria-label="Mood for ${esc(p.name)}">${opts(p.id)}</select></div>
       </div>`).join('')
     : `<p class="small">${tok ? 'No playlists to show.' : 'Connect Spotify to see your playlists.'}</p>`;
   const n = ownedLists.filter(p => !isDriveMix(p.name) && draftHidden.has(p.id)).length;
@@ -953,6 +975,8 @@ function commitSetup() {
   const before = JSON.stringify(mapping);
   hiddenPl = [...draftHidden]; LS.set('hiddenPl', hiddenPl);
   mapping = { ...draftMap }; for (const id of hiddenPl) delete mapping[id];
+  for (const id of draftReviewed) autoPl.delete(id);
+  LS.set('autoPl', [...autoPl]);
   LS.set('mapping', mapping);
   syncDraft();
   favs = draftFavs.filter(f => f.name && f.addr).map(f => ({ ...f }));
@@ -983,13 +1007,21 @@ $('#refresh').addEventListener('click', async () => {
   commitSetup();
   if (tok) {
     setMsg('#setupMsg', 'Checking Spotify for new playlists…');
-    try { await loadPlaylists(); } catch (e) { return setMsg('#setupMsg', e.message, true); }
+    let added = 0;
+    try { added = await loadPlaylists(); } catch (e) { return setMsg('#setupMsg', e.message, true); }
+    const ok = await refreshLib();
+    if (ok && added) setMsg('#setupMsg', `Songs loaded. ${added} new playlist${added === 1 ? ' was' : 's were'} sorted automatically — check the ones marked Auto.`);
+    return;
   }
   refreshLib();
 });
 
 /* ---------- Mood playlist list: mood picks, swipe left to remove ---------- */
-$('#maps').addEventListener('change', e => { const id = e.target.dataset.pl; if (id) draftMap[id] = e.target.value; });
+$('#maps').addEventListener('change', e => {
+  const id = e.target.dataset.pl; if (!id) return;
+  draftMap[id] = e.target.value; draftReviewed.add(id);
+  const tag = e.target.closest('.mapin').querySelector('.auto'); if (tag) tag.remove();
+});
 $('#maps').addEventListener('click', e => {
   const b = e.target.closest('[data-del]'); if (!b) return;
   draftHidden.add(b.dataset.del); delete draftMap[b.dataset.del]; renderMaps();
